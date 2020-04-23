@@ -1,0 +1,10 @@
+plugins {
+    id 'java'
+}
+
+group 'dev.cbyrne.pufferfishmodloader.gradle'
+version '1.0.0'
+
+repositories {
+    mavenCentral()
+}
