@@ -8,8 +8,10 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.jvm.tasks.Jar;
+import org.gradle.language.jvm.tasks.ProcessResources;
 
 import javax.annotation.Nonnull;
+import java.io.File;
 
 public class PufferfishGradle implements Plugin<Project> {
     public static final Gson GSON = new GsonBuilder()
@@ -31,10 +33,14 @@ public class PufferfishGradle implements Plugin<Project> {
         Configuration embedConfig = project.getConfigurations().create("embed"); // For file dependencies
 
         project.afterEvaluate(p -> {
-            TaskGenerateModJson task = p.getTasks().create("genModJson", TaskGenerateModJson.class);
-            task.setLibraryConfiguration(libraryConfiguration);
-            task.setModContainer(extension.getModContainer());
-            task.setOutput(project.file("mods.json"));
+            TaskGenerateModJson modJsonTask = p.getTasks().create("genModJson", TaskGenerateModJson.class);
+            modJsonTask.setLibraryConfiguration(libraryConfiguration);
+            modJsonTask.setModContainer(extension.getModContainer());
+            modJsonTask.setOutput(new File(modJsonTask.getTemporaryDir(), "mods.json"));
+
+            ProcessResources processResourcesTask = (ProcessResources) p.getTasks().getByName("processResources");
+            processResourcesTask.from(modJsonTask.getOutput());
+            processResourcesTask.dependsOn("genModJson");
 
             Jar jarTask = (Jar) p.getTasks().getByName("jar");
             embedConfig.forEach(file -> jarTask.from(file.isDirectory() ? file : p.zipTree(file)));
