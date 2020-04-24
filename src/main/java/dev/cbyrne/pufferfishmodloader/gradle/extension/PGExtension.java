@@ -5,17 +5,17 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 
 public class PGExtension {
-    private final NamedDomainObjectContainer<ModuleExtension> moduleContainer;
+    private final NamedDomainObjectContainer<ModExtension> modContainer;
 
     public PGExtension(Project project) {
-        moduleContainer = project.container(ModuleExtension.class, new ModuleExtensionFactory(project));
+        modContainer = project.container(ModExtension.class, new ModExtensionFactory(project));
     }
 
-    public void modules(Closure<?> closure) {
-        moduleContainer.configure(closure);
+    public void mods(Closure<?> closure) {
+        modContainer.configure(closure);
     }
 
-    public NamedDomainObjectContainer<ModuleExtension> getModuleContainer() {
-        return moduleContainer;
+    public NamedDomainObjectContainer<ModExtension> getModContainer() {
+        return modContainer;
     }
 }
