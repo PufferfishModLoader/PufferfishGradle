@@ -1,5 +1,6 @@
 package dev.cbyrne.pufferfishmodloader.gradle.extension;
 
+import dev.cbyrne.pufferfishmodloader.gradle.utils.NamingScheme;
 import org.gradle.api.NamedDomainObjectFactory;
 import org.gradle.api.Project;
 
@@ -20,6 +21,6 @@ public class ModExtensionFactory implements NamedDomainObjectFactory<ModExtensio
     }
 
     public static String getConfigurationName(String id) {
-        return id + "Library";
+        return NamingScheme.getCamelCaseModid(id) + "Library";
     }
 }
