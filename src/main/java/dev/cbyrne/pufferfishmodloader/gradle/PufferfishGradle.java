@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.PGExtension;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
+import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.typeadapters.ArgumentTypeAdapter;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -19,6 +20,7 @@ import static dev.cbyrne.pufferfishmodloader.gradle.utils.Constants.*;
 public class PufferfishGradle implements Plugin<Project> {
     public static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
+            .registerTypeAdapterFactory(ArgumentTypeAdapter.FACTORY)
             .create();
     private Project project;
     private Configuration libraryConfiguration;
