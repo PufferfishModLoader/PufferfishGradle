@@ -7,11 +7,19 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class HashUtils {
-    private static final int BUFFER_SIZE = 8192;
+    public static final int BUFFER_SIZE = 8192;
+
+    public static String sha1(File file) throws IOException {
+        return hash("SHA-1", file);
+    }
 
     public static String sha256(File file) throws IOException {
+        return hash("SHA-256", file);
+    }
+
+    private static String hash(String algorithm, File file) throws IOException {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
             try (FileInputStream stream = new FileInputStream(file)) {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 while (true) {
