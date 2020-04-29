@@ -10,6 +10,7 @@ import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.remap.TaskDeobfJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDownloadJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskMergeJars;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
+import dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace.TaskDownloadAssets;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace.TaskGenRunConfigs;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HttpUtils;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.InputStreamConsumer;
@@ -80,6 +81,13 @@ public class PufferfishGradle implements Plugin<Project> {
             List<String> taskDeps = new ArrayList<>();
             for (TargetExtension version : extension.getTargetVersions()) {
                 taskDeps.add(setupVersion(version));
+            }
+            if (extension.getTargetVersions().isEmpty()) {
+                // TODO: Fetch latest supported version from PML servers
+                taskDeps.add(setupVersion(new TargetExtension(
+                        "1.15.2",
+                        this
+                )));
             }
             Task task = p.getTasks().create("setup");
             task.setGroup("pufferfishgradle");
@@ -165,6 +173,10 @@ public class PufferfishGradle implements Plugin<Project> {
         deobfJar.setPlugin(this);
         deobfJar.setVersion(version);
 
+        TaskDownloadAssets downloadAssets = project.getTasks().create(TASK_DOWNLOAD_ASSETS + version, TaskDownloadAssets.class);
+        downloadAssets.setPlugin(this);
+        downloadAssets.setVersion(json);
+
         Task task = setupRunConfigTasks(versionObj.getRunDir(), json, sourceSet, versionObj.getClientMainClass(), versionObj.getServerMainClass());
         task.dependsOn(deobfJar.getName());
         return task.getName();
@@ -174,7 +186,7 @@ public class PufferfishGradle implements Plugin<Project> {
         Task t1 = setupRunConfigTask(new File(workDirBase, "client"), version, true, sourceSet, cmc);
         Task t2 = setupRunConfigTask(new File(workDirBase, "server"), version, false, sourceSet, smc);
         Task t3 = project.getTasks().create("genRunConfigs" + version.getId());
-        t3.dependsOn(t1.getName(), t2.getName());
+        t3.dependsOn(t1.getName(), t2.getName(), TASK_DOWNLOAD_ASSETS + version.getId());
         return t3;
     }
 

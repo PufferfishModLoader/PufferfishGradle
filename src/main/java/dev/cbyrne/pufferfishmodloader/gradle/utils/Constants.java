@@ -18,4 +18,5 @@ public class Constants {
     public static final String INTERMEDIARY_CONFIGURATION_NAME = "pufferfishGradleIntermediaryMappings";
     public static final String MAPPINGS_CONFIGURATION_NAME = "pufferfishGradleMappings";
     public static final String TASK_DEOBF_JAR = "deobfJar";
+    public static final String TASK_DOWNLOAD_ASSETS = "downloadAssets";
 }
