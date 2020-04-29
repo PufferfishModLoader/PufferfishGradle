@@ -11,6 +11,7 @@ import java.net.URLConnection;
 
 public class HttpUtils {
     public static void download(URL url, File dest, String sha1, int maxTries) throws IOException {
+        dest.getParentFile().mkdirs();
         for (int tries = 0; !dest.exists() || (sha1 != null && !HashUtils.sha1(dest).equalsIgnoreCase(sha1)); tries++) {
             if (tries >= maxTries) {
                 throw new GradleException("Couldn't download " + url);

@@ -91,7 +91,7 @@ public class YarnMappingProvider extends MappingProvider implements Serializable
                                     dest.fields.put(owner + '/' + officialName, mappedName);
                                     break;
                                 case "METHOD":
-                                    dest.methods.put(owner + '/' + officialName + '/' + officialDesc, mappedName);
+                                    dest.methods.put(owner + '/' + officialName + ' ' + officialDesc, mappedName);
                                     break;
                                 default:
                                     throw new GradleException("Unknown type " + line[0]);

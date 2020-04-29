@@ -1,5 +1,8 @@
 package dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json;
 
+import com.google.common.collect.Maps;
+import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
+
 import java.util.Map;
 
 public class Rule {
@@ -15,7 +18,7 @@ public class Rule {
 
     // returns null if doesn't apply, else returns the action
     public RuleAction getEffectiveAction(Map<String, Boolean> currentFeatures) {
-        if (!os.appliesToCurrent()) return null;
+        if (os != null && !os.appliesToCurrent()) return null;
         if (features != null) for (Map.Entry<String, Boolean> feature : features.entrySet()) {
             if (currentFeatures.getOrDefault(feature.getKey(), false) != feature.getValue()) {
                 return null;
@@ -46,7 +49,8 @@ public class Rule {
     }
 
     public static boolean allow(Rule[] rules, Map<String, Boolean> currentFeatures) {
-        boolean allow = true;
+        if (rules == null) return true;
+        boolean allow = rules.length == 0;
         for (Rule rule : rules) {
             RuleAction action = rule.getEffectiveAction(currentFeatures);
             if (action != null) {

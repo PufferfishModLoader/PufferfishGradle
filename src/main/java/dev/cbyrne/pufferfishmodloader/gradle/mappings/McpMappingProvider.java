@@ -127,7 +127,7 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
                                     String name = parts1.getSecond();
                                     String desc = parts[2];
                                     parts1 = getOwnerAndName(parts[3]);
-                                    dest.methods.put(owner + '/' + name + '/' + desc, methodNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()));
+                                    dest.methods.put(owner + '/' + name + ' ' + desc, methodNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()));
                                 } else if (parts[0].equalsIgnoreCase("PK:")) {
                                     Function<String, String> processor = str -> {
                                         if (!str.equals(".") && !str.endsWith("/")) {

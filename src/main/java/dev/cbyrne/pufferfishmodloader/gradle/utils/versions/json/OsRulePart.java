@@ -20,7 +20,7 @@ public class OsRulePart {
     }
 
     public boolean appliesToCurrent() {
-        return name == OperatingSystem.current() && Pattern.compile(version).matcher(System.getProperty("os.version")).matches();
+        return name == OperatingSystem.current() && (version == null || Pattern.compile(version).matcher(System.getProperty("os.version")).matches());
     }
 
     public OperatingSystem getName() {

@@ -12,8 +12,7 @@ import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskMergeJars;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HttpUtils;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.InputStreamConsumer;
-import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.Artifact;
-import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.VersionJson;
+import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.*;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.typeadapters.ArgumentTypeAdapter;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionManifest;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionManifestEntry;
@@ -99,12 +98,49 @@ public class PufferfishGradle implements Plugin<Project> {
         ));
         project.getDependencies().add(sourceSet.getCompileConfigurationName(), extension.getMainSourceSet().getRuntimeClasspath());
 
+        VersionJson json = getVersionJson(version);
+        for (Library library : json.getLibraries()) {
+            if (!library.getName().equals("tv.twitch:twitch-external-platform:4.5") && Rule.allow(library.getRules(), Maps.newHashMap())) {
+                if (library.getDownloads() != null && library.getDownloads().getArtifact() != null) {
+                    String path = library.getDownloads().getArtifact().getPath();
+                    if (path == null) {
+                        String[] parts = library.getName().split(":");
+                        path = parts[0].replace('.', '/') + '/' + parts[1] + '/' + parts[2] + '/' + parts[1] + '-' + parts[2] + ".jar";
+                    }
+                    File f = new File(cacheDir, "libraries/" + path);
+                    try {
+                        HttpUtils.download(library.getDownloads().getArtifact().getUrl(), f, library.getDownloads().getArtifact().getSha1(), 5);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), project.files(f));
+                } else {
+                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), library.getName());
+                }
+                if (library.getNatives() != null && library.getNatives().containsKey(OperatingSystem.current())) {
+                    LibraryArtifact artifact = library.getDownloads().getClassifiers().get(library.getNatives().get(OperatingSystem.current()));
+                    String path = artifact.getPath();
+                    if (path == null) {
+                        String[] parts = library.getName().split(":");
+                        path = parts[0].replace('.', '/') + '/' + parts[1] + '/' + parts[2] + '/' + parts[1] + '-' + parts[2] + '-' + library.getNatives().get(OperatingSystem.current()) + ".jar";
+                    }
+                    File f = new File(cacheDir, "libraries/" + path);
+                    try {
+                        HttpUtils.download(artifact.getUrl(), f, artifact.getSha1(), 5);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), project.files(f));
+                }
+            }
+        }
+
         runWithJarTask(jar -> {
             jar.dependsOn(sourceSet.getClassesTaskName());
             jar.from(sourceSet.getOutput());
         });
 
-        VersionJson json = getVersionJson(version);
+        // Set up task
         TaskDownloadJar clientJar = setupJarDownload(json, json.getDownloads().getClient(), TASK_DOWNLOAD_CLIENT, "client");
         TaskDownloadJar serverJar = setupJarDownload(json, json.getDownloads().getServer(), TASK_DOWNLOAD_SERVER, "server");
 
