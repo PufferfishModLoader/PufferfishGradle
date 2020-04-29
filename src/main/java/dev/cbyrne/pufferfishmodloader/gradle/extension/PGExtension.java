@@ -6,14 +6,12 @@ import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class PGExtension {
     private final NamedDomainObjectContainer<ModExtension> modContainer;
     private SourceSet mainSourceSet;
-    private final List<String> targetVersions = new ArrayList<>();
+    private final Set<String> targetVersions = new HashSet<>();
 
     public PGExtension(Project project) {
         modContainer = project.container(ModExtension.class, new ModExtensionFactory(project));
@@ -24,7 +22,7 @@ public class PGExtension {
         targetVersions.addAll(Arrays.asList(versions));
     }
 
-    public List<String> getTargetVersions() {
+    public Set<String> getTargetVersions() {
         return targetVersions;
     }
 

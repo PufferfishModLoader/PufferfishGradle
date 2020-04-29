@@ -1,10 +1,12 @@
 package dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json;
 
+import java.net.URL;
+
 public class AssetIndex extends Artifact {
     private final String id;
     private final int totalSize;
 
-    public AssetIndex(String sha1, int size, String url, String id, int totalSize) {
+    public AssetIndex(String sha1, int size, URL url, String id, int totalSize) {
         super(sha1, size, url);
         this.id = id;
         this.totalSize = totalSize;

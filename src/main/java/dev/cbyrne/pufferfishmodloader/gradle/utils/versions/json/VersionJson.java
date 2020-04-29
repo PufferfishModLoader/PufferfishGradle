@@ -40,8 +40,9 @@ public class VersionJson {
     private final ArgumentsContainer arguments;
     private final AssetIndex assetIndex;
     private final Library[] libraries;
+    private final DownloadsContainer downloads;
 
-    public VersionJson(String id, String mainClass, String assets, int minimumLauncherVersion, Date releaseTime, Date time, VersionType type, ArgumentsContainer arguments, AssetIndex assetIndex, Library[] libraries) {
+    public VersionJson(String id, String mainClass, String assets, int minimumLauncherVersion, Date releaseTime, Date time, VersionType type, ArgumentsContainer arguments, AssetIndex assetIndex, Library[] libraries, DownloadsContainer downloads) {
         this.id = id;
         this.mainClass = mainClass;
         this.assets = assets;
@@ -52,6 +53,7 @@ public class VersionJson {
         this.arguments = arguments;
         this.assetIndex = assetIndex;
         this.libraries = libraries;
+        this.downloads = downloads;
     }
 
     public String getId() {
@@ -92,5 +94,9 @@ public class VersionJson {
 
     public Library[] getLibraries() {
         return libraries;
+    }
+
+    public DownloadsContainer getDownloads() {
+        return downloads;
     }
 }

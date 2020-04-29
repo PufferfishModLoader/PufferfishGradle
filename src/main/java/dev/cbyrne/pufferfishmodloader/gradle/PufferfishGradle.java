@@ -4,10 +4,12 @@ import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.PGExtension;
+import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDownloadJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.Constants;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HashUtils;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HttpUtils;
+import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.Artifact;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.VersionJson;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.typeadapters.ArgumentTypeAdapter;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionManifest;
@@ -52,10 +54,27 @@ public class PufferfishGradle implements Plugin<Project> {
         Configuration embedConfig = project.getConfigurations().create(EMBED_CONFIGURATION_NAME); // For file dependencies
 
         project.afterEvaluate(p -> {
+            for (String version : extension.getTargetVersions()) {
+                setupVersion(version);
+            }
+
             setupModsJson();
 
             setupEmbed(embedConfig);
         });
+    }
+
+    private void setupVersion(String version) {
+        VersionJson json = getVersionJson(version);
+        setupJarDownload(json, json.getDownloads().getClient(), TASK_DOWNLOAD_CLIENT, "client");
+        setupJarDownload(json, json.getDownloads().getServer(), TASK_DOWNLOAD_SERVER, "server");
+    }
+
+    private void setupJarDownload(VersionJson version, Artifact artifact, String taskBaseName, String type) {
+        TaskDownloadJar downloadClient = project.getTasks().create(taskBaseName + version.getId(), TaskDownloadJar.class);
+        downloadClient.setUrl(artifact.getUrl());
+        downloadClient.setDest(new File(cacheDir, "versions/" + version.getId() + "/" + type + ".jar"));
+        downloadClient.setSha1(artifact.getSha1());
     }
 
     public VersionJson getVersionJson(String version) {

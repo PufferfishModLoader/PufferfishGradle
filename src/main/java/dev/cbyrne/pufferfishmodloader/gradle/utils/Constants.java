@@ -7,4 +7,6 @@ public class Constants {
     public static final String TASK_GEN_MODS_JSON = "genModsJson";
     public static final String USER_AGENT = "PufferfishGradle/1.0";
     public static final String VERSION_MANIFEST_URL = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+    public static final String TASK_DOWNLOAD_CLIENT = "downloadClient";
+    public static final String TASK_DOWNLOAD_SERVER = "downloadServer";
 }

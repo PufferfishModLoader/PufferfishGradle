@@ -16,7 +16,6 @@ public class HttpUtils {
                 throw new GradleException("Couldn't download " + url);
             }
             try {
-                System.out.println(String.format("Downloading %s (%d/%d)", url, tries + 1, maxTries));
                 URLConnection connection = url.openConnection();
                 connection.setRequestProperty("User-Agent", Constants.USER_AGENT);
                 try (InputStream stream = connection.getInputStream(); FileOutputStream outputStream = new FileOutputStream(dest)) {
