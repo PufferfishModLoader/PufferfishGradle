@@ -37,6 +37,7 @@ public class McpMappingProvider implements MappingProvider {
     private PufferfishGradle plugin;
     private String channel;
     private String version;
+    private String actualTargetVersion;
 
     @Override
     public void initialize(PufferfishGradle plugin, String mcVersion) {
@@ -73,29 +74,6 @@ public class McpMappingProvider implements MappingProvider {
 
     @Override
     public void load(PufferfishGradle plugin, String version) {
-        if (channel == null || this.version == null) throw new GradleException("Invalid MCP version");
-        JsonObject versions = getVersions(this.plugin);
-        boolean found = false;
-        String actualTargetVersion = null;
-        for (Map.Entry<String, JsonElement> entry : versions.entrySet()) {
-            if (found) break;
-            JsonObject obj = entry.getValue().getAsJsonObject();
-            JsonArray versions0 = obj.getAsJsonArray(channel);
-            if (versions0 != null) {
-                for (JsonElement elem : versions0) {
-                    if (Integer.toString(elem.getAsInt()).equals(this.version)) {
-                        this.version += '-' + entry.getKey();
-                        found = true;
-                        actualTargetVersion = entry.getKey();
-                        break;
-                    }
-                }
-            }
-        }
-        if (!found) {
-            throw new GradleException("Invalid MCP version");
-        }
-
         Configuration srg = plugin.getProject().getConfigurations().create(Constants.INTERMEDIARY_CONFIGURATION_NAME + version);
         Configuration mcp = plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"));
@@ -209,6 +187,32 @@ public class McpMappingProvider implements MappingProvider {
                     break;
                 }
             }
+        }
+    }
+
+    @Override
+    public void checkParamsCorrect(PufferfishGradle plugin, String version) {
+        if (channel == null || this.version == null) throw new GradleException("Invalid MCP version");
+        JsonObject versions = getVersions(this.plugin);
+        boolean found = false;
+        String actualTargetVersion = null;
+        for (Map.Entry<String, JsonElement> entry : versions.entrySet()) {
+            if (found) break;
+            JsonObject obj = entry.getValue().getAsJsonObject();
+            JsonArray versions0 = obj.getAsJsonArray(channel);
+            if (versions0 != null) {
+                for (JsonElement elem : versions0) {
+                    if (Integer.toString(elem.getAsInt()).equals(this.version)) {
+                        this.version += '-' + entry.getKey();
+                        found = true;
+                        actualTargetVersion = entry.getKey();
+                        break;
+                    }
+                }
+            }
+        }
+        if (!found) {
+            throw new GradleException("Invalid MCP version");
         }
     }
 

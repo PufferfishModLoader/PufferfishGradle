@@ -79,7 +79,7 @@ public class PufferfishGradle implements Plugin<Project> {
     }
 
     private void setupVersion(TargetExtension versionObj) {
-        versionObj.getMappings().load(this, versionObj.getVersion());
+        versionObj.getMappings().checkParamsCorrect(this, versionObj.getVersion());
         String version = versionObj.getVersion();
         // Set up source set
         JavaPluginConvention javaPlugin = getJavaPlugin();

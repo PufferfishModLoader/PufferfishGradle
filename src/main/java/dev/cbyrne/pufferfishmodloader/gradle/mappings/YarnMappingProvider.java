@@ -59,22 +59,7 @@ public class YarnMappingProvider implements MappingProvider {
 
     @Override
     public void load(PufferfishGradle plugin, String version) {
-        try {
-            plugin.useCachedHttpResource(new URL(Constants.YARN_MAVEN_METADATA_URL), "yarnMavenMetadata.xml", "Couldn't fetch yarn maven metadata", stream -> {
-                String s = IOUtils.toString(stream, StandardCharsets.UTF_8);
-                if (!s.contains("<version>" + YarnMappingProvider.this.version + "</version>")) { // yes, i know, this is very bad xml parsing. leave me alone.
-                    throw new GradleException("Invalid Yarn version");
-                }
-            });
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://maven.fabricmc.net"));
-        /*plugin.getProject().getDependencies().add(Constants.INTERMEDIARY_CONFIGURATION_NAME, ImmutableMap.of(
-                "group", "net.fabricmc",
-                "name", "intermediary",
-                "version", version
-        ));*/
         plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getDependencies().add(Constants.MAPPINGS_CONFIGURATION_NAME + version, ImmutableMap.of(
                 "group", "net.fabricmc",
@@ -135,6 +120,20 @@ public class YarnMappingProvider implements MappingProvider {
                 }
                 break;
             }
+        }
+    }
+
+    @Override
+    public void checkParamsCorrect(PufferfishGradle plugin, String version) {
+        try {
+            plugin.useCachedHttpResource(new URL(Constants.YARN_MAVEN_METADATA_URL), "yarnMavenMetadata.xml", "Couldn't fetch yarn maven metadata", stream -> {
+                String s = IOUtils.toString(stream, StandardCharsets.UTF_8);
+                if (!s.contains("<version>" + YarnMappingProvider.this.version + "</version>")) { // yes, i know, this is very bad xml parsing. leave me alone.
+                    throw new GradleException("Invalid Yarn version");
+                }
+            });
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
         }
     }
 

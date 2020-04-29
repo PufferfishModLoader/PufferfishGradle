@@ -7,6 +7,8 @@ public interface MappingProvider {
 
     void load(PufferfishGradle plugin, String version);
 
+    void checkParamsCorrect(PufferfishGradle plugin, String version);
+
     String mapClassName(String original, boolean backwards);
 
     String mapFieldName(String owner, String original, String desc, boolean backwards);
