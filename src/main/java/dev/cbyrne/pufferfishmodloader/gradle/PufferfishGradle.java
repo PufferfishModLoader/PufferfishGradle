@@ -10,17 +10,16 @@ import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.remap.TaskDeobfJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDownloadJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskMergeJars;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
+import dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace.TaskGenRunConfigs;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HttpUtils;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.InputStreamConsumer;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.*;
+import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.Rule;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.typeadapters.ArgumentTypeAdapter;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionManifest;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionManifestEntry;
 import org.apache.commons.io.IOUtils;
-import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
-import org.gradle.api.Task;
+import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
@@ -33,6 +32,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -57,6 +57,9 @@ public class PufferfishGradle implements Plugin<Project> {
         if (!project.getPluginManager().hasPlugin("java")) {
             project.getPluginManager().apply("java");
         }
+        if (!project.getPluginManager().hasPlugin("idea")) {
+            project.getPluginManager().apply("idea");
+        }
         this.project = project;
         cacheDir = new File(project.getGradle().getGradleUserHomeDir(), "caches/pufferfishgradle");
         cacheDir.mkdirs();
@@ -67,6 +70,9 @@ public class PufferfishGradle implements Plugin<Project> {
         Configuration embedConfig = project.getConfigurations().create(EMBED_CONFIGURATION_NAME); // For file dependencies
 
         project.afterEvaluate(p -> {
+            getJavaPlugin().setSourceCompatibility(JavaVersion.VERSION_1_8);
+            getJavaPlugin().setTargetCompatibility(JavaVersion.VERSION_1_8);
+
             p.getRepositories().mavenCentral();
             p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl("https://libraries.minecraft.net"));
             p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl(new File(cacheDir, "repo").toURI()));
@@ -140,7 +146,7 @@ public class PufferfishGradle implements Plugin<Project> {
             jar.from(sourceSet.getOutput());
         });
 
-        // Set up task
+        // Set up tasks
         TaskDownloadJar clientJar = setupJarDownload(json, json.getDownloads().getClient(), TASK_DOWNLOAD_CLIENT, "client");
         TaskDownloadJar serverJar = setupJarDownload(json, json.getDownloads().getServer(), TASK_DOWNLOAD_SERVER, "server");
 
@@ -158,7 +164,48 @@ public class PufferfishGradle implements Plugin<Project> {
         deobfJar.setBackwards(false);
         deobfJar.setPlugin(this);
         deobfJar.setVersion(version);
-        return deobfJar.getName();
+
+        Task task = setupRunConfigTasks(versionObj.getRunDir(), json, sourceSet, versionObj.getClientMainClass(), versionObj.getServerMainClass());
+        task.dependsOn(deobfJar.getName());
+        return task.getName();
+    }
+
+    private Task setupRunConfigTasks(File workDirBase, VersionJson version, SourceSet sourceSet, String cmc, String smc) {
+        Task t1 = setupRunConfigTask(new File(workDirBase, "client"), version, true, sourceSet, cmc);
+        Task t2 = setupRunConfigTask(new File(workDirBase, "server"), version, false, sourceSet, smc);
+        Task t3 = project.getTasks().create("genRunConfigs" + version.getId());
+        t3.dependsOn(t1.getName(), t2.getName());
+        return t3;
+    }
+
+    private Task setupRunConfigTask(File workDirectory, VersionJson version, boolean client, SourceSet sourceSet, String mainClass) {
+        String name = "genRunConfig" + version.getId();
+        if (client) {
+            name += "Client";
+        } else {
+            name += "Server";
+        }
+        String configName = "Minecraft " + version.getId() + ' ';
+        if (client) {
+            configName += "Client";
+        } else {
+            configName += "Server";
+        }
+        TaskGenRunConfigs task = project.getTasks().create(name, TaskGenRunConfigs.class);
+        task.setSourceSetName(sourceSet.getName());
+        task.setConfigName(configName);
+        task.setOptions(new ArrayList<>());
+        task.setWorkingDirectory(workDirectory);
+        task.setVmOptions(new ArrayList<>());
+        if (version.getArguments() != null && version.getArguments().getJvm() != null && OperatingSystem.current() == OperatingSystem.MACOS) {
+            task.getVmOptions().add("-XstartOnFirstThread");
+        }
+        task.setEnvironmentVars(new HashMap<>());
+        task.getEnvironmentVars().put("MAIN_CLASS", mainClass);
+        task.getEnvironmentVars().put("ASSET_DIRECTORY", new File(cacheDir, "assets").getAbsolutePath());
+        task.getEnvironmentVars().put("ASSET_INDEX", version.getAssetIndex().getId());
+        task.getEnvironmentVars().put("RUN_DIRECTORY", workDirectory.getAbsolutePath());
+        return task;
     }
 
     @SuppressWarnings("UnstableApiUsage")

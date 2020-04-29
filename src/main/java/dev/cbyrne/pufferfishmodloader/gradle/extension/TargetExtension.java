@@ -6,10 +6,15 @@ import dev.cbyrne.pufferfishmodloader.gradle.mappings.MappingProviderRegistry;
 import dev.cbyrne.pufferfishmodloader.gradle.mappings.YarnMappingProvider;
 import groovy.lang.Closure;
 
+import java.io.File;
+
 public class TargetExtension {
     private final String version;
     private final PufferfishGradle plugin;
+    private String clientMainClass = "dev.cbyrne.pufferfishmodloader.launch.PMLClientMain";
+    private String serverMainClass = "dev.cbyrne.pufferfishmodloader.launch.PMLServerMain";
     private MappingProvider mappings;
+    private File runDir;
 
     public TargetExtension(String version, PufferfishGradle plugin) {
         this.version = version;
@@ -19,6 +24,43 @@ public class TargetExtension {
         } else {
             mcp();
         }
+        runDir = new File(plugin.getProject().getProjectDir(), "run/" + version);
+    }
+
+    public void clientMainClass(String main) {
+        clientMainClass = main;
+    }
+
+    public void serverMainClass(String main) {
+        serverMainClass = main;
+    }
+
+    public void setClientMainClass(String clientMainClass) {
+        this.clientMainClass = clientMainClass;
+    }
+
+    public void setServerMainClass(String serverMainClass) {
+        this.serverMainClass = serverMainClass;
+    }
+
+    public String getClientMainClass() {
+        return clientMainClass;
+    }
+
+    public String getServerMainClass() {
+        return serverMainClass;
+    }
+
+    public void runDir(Object dir) {
+        runDir = plugin.getProject().file(dir);
+    }
+
+    public void setRunDir(Object dir) {
+        runDir(dir);
+    }
+
+    public File getRunDir() {
+        return runDir;
     }
 
     public void mcp() {
@@ -48,10 +90,6 @@ public class TargetExtension {
         provider.initialize(plugin, version);
         plugin.getProject().configure(provider, closure);
         mappings = provider;
-    }
-
-    public void bruh() {
-        System.out.println("ok thne");
     }
 
     public MappingProvider getMappings() {

@@ -1,6 +1,7 @@
 package dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft;
 
 import com.google.common.collect.Lists;
+import dev.cbyrne.pufferfishmodloader.Start;
 import dev.cbyrne.pufferfishmodloader.gradle.sideannotations.OnlyIn;
 import dev.cbyrne.pufferfishmodloader.gradle.sideannotations.Side;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.ExceptionalSupplier;
@@ -65,7 +66,7 @@ public class TaskMergeJars extends DefaultTask {
                 copyClass(entry.getValue(), sJar, out, false);
             }
 
-            for (String name : Arrays.asList(ONLY_IN_CLASS.getName(), SIDE_ENUM_CLASS.getName())) {
+            for (String name : Arrays.asList(ONLY_IN_CLASS.getName(), SIDE_ENUM_CLASS.getName(), Start.class.getName(), Start.NextArgumentType.class.getName())) {
                 String name1 = name.replace('.', '/');
                 String path = name1 + ".class";
                 ZipEntry entry = new ZipEntry(path);

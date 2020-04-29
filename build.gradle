@@ -7,10 +7,14 @@ version '1.0.0'
 
 repositories {
     mavenCentral()
+    maven {
+        url 'https://libraries.minecraft.net'
+    }
 }
 
 dependencies {
     implementation gradleApi()
+    compileOnly 'com.mojang:authlib:1.5.21' // To be able to compile the Start class
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.google.guava:guava:29.0-jre")
     implementation("commons-io:commons-io:2.6")
