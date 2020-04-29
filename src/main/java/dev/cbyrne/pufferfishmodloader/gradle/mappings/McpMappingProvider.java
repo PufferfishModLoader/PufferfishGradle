@@ -3,6 +3,7 @@ package dev.cbyrne.pufferfishmodloader.gradle.mappings;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -25,28 +26,26 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class McpMappingProvider implements MappingProvider {
+public class McpMappingProvider extends MappingProvider implements Serializable {
     private static final Pattern MC_VERSION_PATTERN = Pattern.compile("[0-9]+\\.([0-9]+)(\\.[0-9]+)?");
 
     private final BiMap<String, String> classNames = HashBiMap.create();
     // (owner -> ((officialMethodName, officialMethodDesc) <-> (mappedMethodName, mappedMethodDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = HashBiMap.create();
+    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = Maps.newHashMap();
     // (owner -> (officialFieldName <-> mappedFieldName)
-    private final Map<String, BiMap<String, String>> fieldNames = HashBiMap.create();
+    private final Map<String, BiMap<String, String>> fieldNames = Maps.newHashMap();
 
-    private PufferfishGradle plugin;
     private String channel;
     private String version;
     private String actualTargetVersion;
 
     @Override
     public void initialize(PufferfishGradle plugin, String mcVersion) {
-        this.plugin = plugin;
         useLatestFrom(mcVersion);
     }
 
     public void useLatestFrom(String mcVersion) {
-        Pair<String, Integer> latest = getLatest(plugin, mcVersion);
+        Pair<String, Integer> latest = getLatest(mcVersion);
         if (latest != null) {
             channel = latest.getFirst();
             version = Integer.toString(latest.getSecond());
@@ -74,6 +73,7 @@ public class McpMappingProvider implements MappingProvider {
 
     @Override
     public void load(PufferfishGradle plugin, String version) {
+        super.load(plugin, version);
         Configuration srg = plugin.getProject().getConfigurations().create(Constants.INTERMEDIARY_CONFIGURATION_NAME + version);
         Configuration mcp = plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"));
@@ -193,9 +193,9 @@ public class McpMappingProvider implements MappingProvider {
     @Override
     public void checkParamsCorrect(PufferfishGradle plugin, String version) {
         if (channel == null || this.version == null) throw new GradleException("Invalid MCP version");
-        JsonObject versions = getVersions(this.plugin);
+        JsonObject versions = getVersions();
         boolean found = false;
-        String actualTargetVersion = null;
+        actualTargetVersion = null;
         for (Map.Entry<String, JsonElement> entry : versions.entrySet()) {
             if (found) break;
             JsonObject obj = entry.getValue().getAsJsonObject();
@@ -245,26 +245,26 @@ public class McpMappingProvider implements MappingProvider {
     @Override
     public String mapClassName(String original, boolean backwards) {
         if (backwards) return classNames.inverse().get(original);
-        return classNames.get(original);
+        return classNames.getOrDefault(original, original);
     }
 
     @Override
     public String mapFieldName(String owner, String original, String desc, boolean backwards) {
         if (backwards) return fieldNames.getOrDefault(owner, HashBiMap.create()).inverse().get(original);
-        return fieldNames.getOrDefault(owner, HashBiMap.create()).get(original);
+        return fieldNames.getOrDefault(owner, HashBiMap.create()).getOrDefault(original, original);
     }
 
     @Override
     public String mapMethodName(String owner, String original, String desc, boolean backwards) {
         if (backwards) return methodNames.getOrDefault(owner, YarnMappingProvider.EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return methodNames.getOrDefault(owner, YarnMappingProvider.EMPTY).get(new Pair<>(original, desc)).getFirst();
+        return methodNames.getOrDefault(owner, YarnMappingProvider.EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
     }
 
-    private static JsonObject getVersions(PufferfishGradle plugin) {
+    private static JsonObject getVersions() {
         AtomicReference<JsonObject> objectAtomic = new AtomicReference<>();
 
         try {
-            plugin.useCachedHttpResource(new URL(Constants.MCP_VERSIONS_URL), "mcpVersions.json", "Couldn't fetch MCP versions", stream -> {
+            PufferfishGradle.useCachedHttpResource(new URL(Constants.MCP_VERSIONS_URL), "mcpVersions.json", "Couldn't fetch MCP versions", stream -> {
                 try (InputStreamReader reader = new InputStreamReader(stream)) {
                     objectAtomic.set(new JsonParser().parse(reader).getAsJsonObject());
                 }
@@ -275,8 +275,8 @@ public class McpMappingProvider implements MappingProvider {
         return objectAtomic.get();
     }
 
-    private static Pair<String, Integer> getLatest(PufferfishGradle plugin, String version) {
-        JsonObject obj = getVersions(plugin).getAsJsonObject(version);
+    private static Pair<String, Integer> getLatest(String version) {
+        JsonObject obj = getVersions().getAsJsonObject(version);
         if (obj == null) return null;
         if (obj.has("stable") && obj.getAsJsonArray("stable").size() > 0) {
             return new Pair<>("stable", obj.getAsJsonArray("stable").get(0).getAsInt());

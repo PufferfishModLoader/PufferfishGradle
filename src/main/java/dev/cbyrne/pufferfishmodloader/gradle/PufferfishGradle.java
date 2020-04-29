@@ -1,10 +1,12 @@
 package dev.cbyrne.pufferfishmodloader.gradle;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.PGExtension;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.TargetExtension;
+import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDeobfJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDownloadJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskMergeJars;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;
@@ -31,6 +33,8 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -42,9 +46,9 @@ public class PufferfishGradle implements Plugin<Project> {
             .registerTypeAdapterFactory(ArgumentTypeAdapter.FACTORY)
             .create();
     private final Map<String, VersionJson> manifests = Maps.newHashMap();
-    private final Map<String, byte[]> httpResourceCache = Maps.newHashMap();
+    private static final Map<String, byte[]> httpResourceCache = Maps.newHashMap();
     private VersionManifest versionManifest;
-    private File cacheDir;
+    private static File cacheDir;
     private Project project;
     private Configuration libraryConfiguration;
     private PGExtension extension;
@@ -68,9 +72,13 @@ public class PufferfishGradle implements Plugin<Project> {
             p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl("https://libraries.minecraft.net"));
             p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl(new File(cacheDir, "repo").toURI()));
 
+            List<String> taskDeps = new ArrayList<>();
             for (TargetExtension version : extension.getTargetVersions()) {
-                setupVersion(version);
+                taskDeps.add(setupVersion(version));
             }
+            Task task = p.getTasks().create("setup");
+            task.setGroup("pufferfishgradle");
+            task.dependsOn(taskDeps.toArray(new Object[0]));
 
             setupModsJson();
 
@@ -78,17 +86,17 @@ public class PufferfishGradle implements Plugin<Project> {
         });
     }
 
-    private void setupVersion(TargetExtension versionObj) {
+    private String setupVersion(TargetExtension versionObj) {
         versionObj.getMappings().checkParamsCorrect(this, versionObj.getVersion());
         String version = versionObj.getVersion();
         // Set up source set
         JavaPluginConvention javaPlugin = getJavaPlugin();
         SourceSet sourceSet = javaPlugin.getSourceSets().maybeCreate("mc" + version);
-        /*project.getDependencies().add(sourceSet.getCompileConfigurationName(), ImmutableMap.of(
+        project.getDependencies().add(sourceSet.getCompileConfigurationName(), ImmutableMap.of(
                 "group", MINECRAFT_GROUP,
                 "name", MINECRAFT_ARTIFACT,
                 "version", version
-        ));*/ // TODO: Uncomment when this artifact can actually be generated
+        ));
         project.getDependencies().add(sourceSet.getCompileConfigurationName(), extension.getMainSourceSet().getRuntimeClasspath());
 
         runWithJarTask(jar -> {
@@ -105,6 +113,16 @@ public class PufferfishGradle implements Plugin<Project> {
         mergeJars.setServerJar(serverJar.getDest());
         mergeJars.setOutputJar(new File(cacheDir, "versions/" + version + "/merged.jar"));
         mergeJars.dependsOn(clientJar.getName(), serverJar.getName());
+
+        TaskDeobfJar deobfJar = project.getTasks().create(TASK_DEOBF_JAR + version, TaskDeobfJar.class);
+        deobfJar.setInput(mergeJars.getOutputJar());
+        deobfJar.setMappings(versionObj.getMappings());
+        deobfJar.setOutput(new File(cacheDir, "repo/net/minecraft/minecraft/" + version + "/minecraft-" + version + ".jar"));
+        deobfJar.dependsOn(mergeJars.getName());
+        deobfJar.setBackwards(false);
+        deobfJar.setPlugin(this);
+        deobfJar.setVersion(version);
+        return deobfJar.getName();
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -148,7 +166,7 @@ public class PufferfishGradle implements Plugin<Project> {
         });
     }
 
-    public void useCachedHttpResource(URL url, String filename, String errorMessage, InputStreamConsumer consumer) {
+    public static void useCachedHttpResource(URL url, String filename, String errorMessage, InputStreamConsumer consumer) {
         if (!httpResourceCache.containsKey(filename)) {
             File cachedFile = new File(cacheDir, filename);
             try {

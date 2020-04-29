@@ -17,4 +17,5 @@ public class Constants {
     public static final String YARN_MAVEN_METADATA_URL = "https://maven.fabricmc.net/net/fabricmc/yarn/maven-metadata.xml";
     public static final String INTERMEDIARY_CONFIGURATION_NAME = "pufferfishGradleIntermediaryMappings";
     public static final String MAPPINGS_CONFIGURATION_NAME = "pufferfishGradleMappings";
+    public static final String TASK_DEOBF_JAR = "deobfJar";
 }

@@ -1,7 +1,5 @@
 package dev.cbyrne.pufferfishmodloader.gradle.extension;
 
-import org.gradle.api.artifacts.Configuration;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -14,7 +14,7 @@ public class TargetExtension {
     public TargetExtension(String version, PufferfishGradle plugin) {
         this.version = version;
         this.plugin = plugin;
-        if (YarnMappingProvider.isAvailable(plugin, version)) {
+        if (YarnMappingProvider.isAvailable(version)) {
             yarn();
         } else {
             mcp();

@@ -2,16 +2,24 @@ package dev.cbyrne.pufferfishmodloader.gradle.mappings;
 
 import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 
-public interface MappingProvider {
-    void initialize(PufferfishGradle plugin, String mcVersion);
+public abstract class MappingProvider {
+    private boolean loaded = false;
 
-    void load(PufferfishGradle plugin, String version);
+    public abstract void initialize(PufferfishGradle plugin, String mcVersion);
 
-    void checkParamsCorrect(PufferfishGradle plugin, String version);
+    public void load(PufferfishGradle plugin, String version) {
+        loaded = true;
+    }
 
-    String mapClassName(String original, boolean backwards);
+    public boolean isLoaded() {
+        return loaded;
+    }
 
-    String mapFieldName(String owner, String original, String desc, boolean backwards);
+    public abstract void checkParamsCorrect(PufferfishGradle plugin, String version);
 
-    String mapMethodName(String owner, String original, String desc, boolean backwards);
+    public abstract String mapClassName(String original, boolean backwards);
+
+    public abstract String mapFieldName(String owner, String original, String desc, boolean backwards);
+
+    public abstract String mapMethodName(String owner, String original, String desc, boolean backwards);
 }

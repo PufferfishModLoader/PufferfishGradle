@@ -68,8 +68,8 @@ public class TaskMergeJars extends DefaultTask {
             for (String name : Arrays.asList(ONLY_IN_CLASS.getName(), SIDE_ENUM_CLASS.getName())) {
                 String name1 = name.replace('.', '/');
                 String path = name1 + ".class";
-                ZipEntry entry = new ZipEntry(name1);
-                if (!added.contains(name1)) {
+                ZipEntry entry = new ZipEntry(path);
+                if (!added.contains(path)) {
                     out.putNextEntry(entry);
                     out.write(getBytes(() -> TaskMergeJars.class.getResourceAsStream("/" + path)));
                 }

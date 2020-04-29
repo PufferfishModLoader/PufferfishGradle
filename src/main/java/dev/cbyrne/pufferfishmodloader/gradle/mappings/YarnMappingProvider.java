@@ -3,6 +3,7 @@ package dev.cbyrne.pufferfishmodloader.gradle.mappings;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
@@ -22,26 +23,24 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class YarnMappingProvider implements MappingProvider {
+public class YarnMappingProvider extends MappingProvider implements Serializable {
     static final BiMap<Pair<String, String>, Pair<String, String>> EMPTY = HashBiMap.create();
-    private PufferfishGradle plugin;
     private String version;
 
     private final BiMap<String, String> classNames = HashBiMap.create();
     // (owner -> ((officialMethodName, officialMethodDesc) <-> (mappedMethodName, mappedMethodDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = HashBiMap.create();
+    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = Maps.newHashMap();
     // (owner -> ((officialFieldName, officialFieldDesc) <-> (mappedFieldName, mappedFieldDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> fieldNames = HashBiMap.create();
+    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> fieldNames = Maps.newHashMap();
 
     @Override
     public void initialize(PufferfishGradle plugin, String mcVersion) {
-        this.plugin = plugin;
         useLatestFrom(mcVersion);
     }
 
     public void useLatestFrom(String mcVersion) {
-        if (isAvailable(plugin, mcVersion)) {
-            version = getVersions(plugin, mcVersion).get(0).getAsJsonObject()
+        if (isAvailable(mcVersion)) {
+            version = getVersions(mcVersion).get(0).getAsJsonObject()
                     .getAsJsonObject("mappings")
                     .get("version").getAsString();
         } else {
@@ -59,6 +58,7 @@ public class YarnMappingProvider implements MappingProvider {
 
     @Override
     public void load(PufferfishGradle plugin, String version) {
+        super.load(plugin, version);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://maven.fabricmc.net"));
         plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getDependencies().add(Constants.MAPPINGS_CONFIGURATION_NAME + version, ImmutableMap.of(
@@ -66,7 +66,7 @@ public class YarnMappingProvider implements MappingProvider {
                 "name", "yarn",
                 "version", this.version
         ));
-        for (File f : plugin.getProject().getConfigurations().getByName(Constants.MAPPINGS_CONFIGURATION_NAME)) {
+        for (File f : plugin.getProject().getConfigurations().getByName(Constants.MAPPINGS_CONFIGURATION_NAME + version)) {
             if (f.getName().endsWith(".jar")) {
                 // this is the mapping jar
 
@@ -126,7 +126,7 @@ public class YarnMappingProvider implements MappingProvider {
     @Override
     public void checkParamsCorrect(PufferfishGradle plugin, String version) {
         try {
-            plugin.useCachedHttpResource(new URL(Constants.YARN_MAVEN_METADATA_URL), "yarnMavenMetadata.xml", "Couldn't fetch yarn maven metadata", stream -> {
+            PufferfishGradle.useCachedHttpResource(new URL(Constants.YARN_MAVEN_METADATA_URL), "yarnMavenMetadata.xml", "Couldn't fetch yarn maven metadata", stream -> {
                 String s = IOUtils.toString(stream, StandardCharsets.UTF_8);
                 if (!s.contains("<version>" + YarnMappingProvider.this.version + "</version>")) { // yes, i know, this is very bad xml parsing. leave me alone.
                     throw new GradleException("Invalid Yarn version");
@@ -139,26 +139,27 @@ public class YarnMappingProvider implements MappingProvider {
 
     @Override
     public String mapClassName(String original, boolean backwards) {
+        // System.out.println(original + " " + classNames.get(original) + " " + classNames);
         if (backwards) return classNames.inverse().get(original);
-        return classNames.get(original);
+        return classNames.getOrDefault(original, original);
     }
 
     @Override
     public String mapFieldName(String owner, String original, String desc, boolean backwards) {
         if (backwards) return fieldNames.getOrDefault(owner, EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return fieldNames.getOrDefault(owner, EMPTY).get(new Pair<>(original, desc)).getFirst();
+        return fieldNames.getOrDefault(owner, EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
     }
 
     @Override
     public String mapMethodName(String owner, String original, String desc, boolean backwards) {
         if (backwards) return methodNames.getOrDefault(owner, EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return methodNames.getOrDefault(owner, EMPTY).get(new Pair<>(original, desc)).getFirst();
+        return methodNames.getOrDefault(owner, EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
     }
 
-    private static JsonArray getVersions(PufferfishGradle plugin, String version) {
+    private static JsonArray getVersions(String version) {
         AtomicReference<JsonArray> atomicArray = new AtomicReference<>();
         try {
-            plugin.useCachedHttpResource(new URL(Constants.YARN_VERSIONS_URL + version), "yarnVersions" + version + ".json", "Couldn't fetch yarn versions", stream -> {
+            PufferfishGradle.useCachedHttpResource(new URL(Constants.YARN_VERSIONS_URL + version), "yarnVersions" + version + ".json", "Couldn't fetch yarn versions", stream -> {
                 try (InputStreamReader reader = new InputStreamReader(stream)) {
                     atomicArray.set(new JsonParser().parse(reader).getAsJsonArray());
                 }
@@ -169,7 +170,7 @@ public class YarnMappingProvider implements MappingProvider {
         return atomicArray.get();
     }
 
-    public static boolean isAvailable(PufferfishGradle plugin, String version) {
-        return getVersions(plugin, version).size() > 0;
+    public static boolean isAvailable(String version) {
+        return getVersions(version).size() > 0;
     }
 }
