@@ -1,37 +1,29 @@
 package dev.cbyrne.pufferfishmodloader.gradle.mappings;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.Constants;
-import dev.cbyrne.pufferfishmodloader.gradle.utils.Pair;
+import net.md_5.specialsource.JarMapping;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.GradleException;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class YarnMappingProvider extends MappingProvider implements Serializable {
-    static final BiMap<Pair<String, String>, Pair<String, String>> EMPTY = HashBiMap.create();
     private String version;
-
-    private final BiMap<String, String> classNames = HashBiMap.create();
-    // (owner -> ((officialMethodName, officialMethodDesc) <-> (mappedMethodName, mappedMethodDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = Maps.newHashMap();
-    // (owner -> ((officialFieldName, officialFieldDesc) <-> (mappedFieldName, mappedFieldDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> fieldNames = Maps.newHashMap();
 
     @Override
     public void initialize(PufferfishGradle plugin, String mcVersion) {
@@ -57,8 +49,8 @@ public class YarnMappingProvider extends MappingProvider implements Serializable
     }
 
     @Override
-    public void load(PufferfishGradle plugin, String version) {
-        super.load(plugin, version);
+    public void load(PufferfishGradle plugin, String version, JarMapping dest) {
+        super.load(plugin, version, dest);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://maven.fabricmc.net"));
         plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getDependencies().add(Constants.MAPPINGS_CONFIGURATION_NAME + version, ImmutableMap.of(
@@ -82,37 +74,28 @@ public class YarnMappingProvider extends MappingProvider implements Serializable
                             while ((line = reader.readLine()) != null) {
                                 String[] parts = line.split("[ \t]+");
                                 if (parts[0].equalsIgnoreCase("CLASS")) {
-                                    classNames.put(parts[1], parts[3]);
+                                    dest.classes.put(parts[1], parts[3]);
                                 } else {
                                     nonClassLines.add(parts);
                                 }
                             }
                         }
 
-                        DescRemapUtil util = new DescRemapUtil(this, false);
                         for (String[] line : nonClassLines) {
                             String owner = line[1];
                             String officialDesc = line[2];
                             String officialName = line[3];
                             String mappedName = line[5];
-                            Map<String, BiMap<Pair<String, String>, Pair<String, String>>> dest;
-                            String mappedDesc;
                             switch (line[0]) {
                                 case "FIELD":
-                                    mappedDesc = util.mapDesc(officialDesc);
-                                    dest = fieldNames;
+                                    dest.fields.put(owner + '/' + officialName, mappedName);
                                     break;
                                 case "METHOD":
-                                    mappedDesc = util.mapMethodDesc(officialDesc);
-                                    dest = methodNames;
+                                    dest.methods.put(owner + '/' + officialName + '/' + officialDesc, mappedName);
                                     break;
                                 default:
                                     throw new GradleException("Unknown type " + line[0]);
                             }
-                            dest.computeIfAbsent(owner, o -> HashBiMap.create()).put(
-                                    new Pair<>(officialName, officialDesc),
-                                    new Pair<>(mappedName, mappedDesc)
-                            );
                         }
                     }
                 } catch (Exception e) {
@@ -135,25 +118,6 @@ public class YarnMappingProvider extends MappingProvider implements Serializable
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    public String mapClassName(String original, boolean backwards) {
-        // System.out.println(original + " " + classNames.get(original) + " " + classNames);
-        if (backwards) return classNames.inverse().get(original);
-        return classNames.getOrDefault(original, original);
-    }
-
-    @Override
-    public String mapFieldName(String owner, String original, String desc, boolean backwards) {
-        if (backwards) return fieldNames.getOrDefault(owner, EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return fieldNames.getOrDefault(owner, EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
-    }
-
-    @Override
-    public String mapMethodName(String owner, String original, String desc, boolean backwards) {
-        if (backwards) return methodNames.getOrDefault(owner, EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return methodNames.getOrDefault(owner, EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
     }
 
     private static JsonArray getVersions(String version) {

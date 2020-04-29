@@ -1,9 +1,6 @@
 package dev.cbyrne.pufferfishmodloader.gradle.mappings;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -12,15 +9,20 @@ import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.Constants;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.InputStreamConsumer;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.Pair;
+import net.md_5.specialsource.JarMapping;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -28,12 +30,6 @@ import java.util.zip.ZipFile;
 
 public class McpMappingProvider extends MappingProvider implements Serializable {
     private static final Pattern MC_VERSION_PATTERN = Pattern.compile("[0-9]+\\.([0-9]+)(\\.[0-9]+)?");
-
-    private final BiMap<String, String> classNames = HashBiMap.create();
-    // (owner -> ((officialMethodName, officialMethodDesc) <-> (mappedMethodName, mappedMethodDesc)))
-    private final Map<String, BiMap<Pair<String, String>, Pair<String, String>>> methodNames = Maps.newHashMap();
-    // (owner -> (officialFieldName <-> mappedFieldName)
-    private final Map<String, BiMap<String, String>> fieldNames = Maps.newHashMap();
 
     private String channel;
     private String version;
@@ -72,8 +68,8 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
     }
 
     @Override
-    public void load(PufferfishGradle plugin, String version) {
-        super.load(plugin, version);
+    public void load(PufferfishGradle plugin, String version, JarMapping dest) {
+        super.load(plugin, version, dest);
         Configuration srg = plugin.getProject().getConfigurations().create(Constants.INTERMEDIARY_CONFIGURATION_NAME + version);
         Configuration mcp = plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"));
@@ -118,23 +114,28 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
                             while ((line = reader.readLine()) != null) {
                                 String[] parts = line.split(" ");
                                 if (parts[0].equalsIgnoreCase("CL:")) {
-                                    classNames.put(parts[1], parts[2]);
+                                    dest.classes.put(parts[1], parts[2]);
                                 } else if (parts[0].equalsIgnoreCase("FD:")) {
                                     Pair<String, String> parts1 = getOwnerAndName(parts[1]);
                                     String owner = parts1.getFirst();
                                     String name = parts1.getSecond();
                                     parts1 = getOwnerAndName(parts[2]);
-                                    fieldNames.computeIfAbsent(owner, p -> HashBiMap.create())
-                                            .put(name, fieldNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()));
+                                    dest.fields.put(owner + '/' + name, fieldNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()));
                                 } else if (parts[0].equalsIgnoreCase("MD:")) {
                                     Pair<String, String> parts1 = getOwnerAndName(parts[1]);
                                     String owner = parts1.getFirst();
                                     String name = parts1.getSecond();
                                     String desc = parts[2];
                                     parts1 = getOwnerAndName(parts[3]);
-                                    String descMapped = parts[4];
-                                    methodNames.computeIfAbsent(owner, p -> HashBiMap.create())
-                                            .put(new Pair<>(name, desc), new Pair<>(methodNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()), descMapped));
+                                    dest.methods.put(owner + '/' + name + '/' + desc, methodNameCsv.getOrDefault(parts1.getSecond(), parts1.getSecond()));
+                                } else if (parts[0].equalsIgnoreCase("PK:")) {
+                                    Function<String, String> processor = str -> {
+                                        if (!str.equals(".") && !str.endsWith("/")) {
+                                            return str + '/';
+                                        }
+                                        return str;
+                                    };
+                                    dest.packages.put(processor.apply(parts[1]), processor.apply(parts[2]));
                                 }
                             }
                         }
@@ -160,26 +161,22 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
                                 String[] parts = line.split("[ \t]+");
                                 if (parts.length == 2) {
                                     currentOwner = parts[0];
-                                    classNames.put(parts[0], parts[1]);
+                                    dest.classes.put(parts[0], parts[1]);
                                 } else {
                                     nonClassLines.add(new Pair<>(currentOwner, parts));
                                 }
                             }
 
-                            DescRemapUtil remap = new DescRemapUtil(this, false);
                             for (Pair<String, String[]> partsPair : nonClassLines) {
                                 String[] parts = partsPair.getSecond();
                                 if (parts.length == 3) {
                                     // it's a field
-                                    fieldNames.computeIfAbsent(partsPair.getFirst(), c -> HashBiMap.create())
-                                            .put(parts[1], fieldNameCsv.getOrDefault(parts[2], parts[2]));
+                                    dest.fields.put(partsPair.getFirst() + '/' + parts[1],
+                                            fieldNameCsv.getOrDefault(parts[2], parts[2]));
                                 } else if (parts.length == 4) {
                                     // it's a method
-                                    methodNames.computeIfAbsent(partsPair.getFirst(), c -> HashBiMap.create())
-                                            .put(
-                                                    new Pair<>(parts[1], parts[2]),
-                                                    new Pair<>(methodNameCsv.getOrDefault(parts[3], parts[3]), remap.mapMethodDesc(parts[2]))
-                                            );
+                                    dest.methods.put(partsPair.getFirst() + '/' + parts[1] + '/' + parts[2],
+                                            methodNameCsv.getOrDefault(parts[3], parts[3]));
                                 }
                             }
                         }
@@ -240,24 +237,6 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
         } catch (IOException e) {
             throw new GradleException("Couldn't read mappings", e);
         }
-    }
-
-    @Override
-    public String mapClassName(String original, boolean backwards) {
-        if (backwards) return classNames.inverse().get(original);
-        return classNames.getOrDefault(original, original);
-    }
-
-    @Override
-    public String mapFieldName(String owner, String original, String desc, boolean backwards) {
-        if (backwards) return fieldNames.getOrDefault(owner, HashBiMap.create()).inverse().get(original);
-        return fieldNames.getOrDefault(owner, HashBiMap.create()).getOrDefault(original, original);
-    }
-
-    @Override
-    public String mapMethodName(String owner, String original, String desc, boolean backwards) {
-        if (backwards) return methodNames.getOrDefault(owner, YarnMappingProvider.EMPTY).inverse().get(new Pair<>(original, desc)).getFirst();
-        return methodNames.getOrDefault(owner, YarnMappingProvider.EMPTY).getOrDefault(new Pair<>(original, desc), new Pair<>(original, desc)).getFirst();
     }
 
     private static JsonObject getVersions() {

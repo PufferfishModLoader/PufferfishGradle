@@ -6,7 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.PGExtension;
 import dev.cbyrne.pufferfishmodloader.gradle.extension.TargetExtension;
-import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDeobfJar;
+import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.remap.TaskDeobfJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskDownloadJar;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.TaskMergeJars;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.mods.TaskGenerateModJson;

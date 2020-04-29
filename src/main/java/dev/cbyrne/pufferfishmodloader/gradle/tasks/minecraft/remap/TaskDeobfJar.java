@@ -1,7 +1,10 @@
-package dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft;
+package dev.cbyrne.pufferfishmodloader.gradle.tasks.minecraft.remap;
 
 import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 import dev.cbyrne.pufferfishmodloader.gradle.mappings.MappingProvider;
+import net.md_5.specialsource.*;
+import net.md_5.specialsource.provider.JarProvider;
+import net.md_5.specialsource.provider.JointProvider;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
@@ -31,14 +34,25 @@ public class TaskDeobfJar extends DefaultTask {
 
     @TaskAction
     public void deobf() throws IOException {
-        if (!mappings.isLoaded()) {
-            mappings.load(plugin, version);
-        }
         output.getParentFile().mkdirs();
-        try (ZipFile in = new ZipFile(input);
+
+        JarMapping mapping = new JarMapping();
+        mappings.load(plugin, version, mapping);
+        AccessMap accessMap = new AccessMap();
+        // TODO: Add access transformer support
+        RemapperProcessor processor = new RemapperProcessor(null, mapping, accessMap);
+        JarRemapper remapper = new JarRemapper(processor, mapping, null);
+        Jar inputJar = Jar.init(input);
+        JointProvider inheritanceProvider = new JointProvider();
+        inheritanceProvider.add(new JarProvider(inputJar));
+        mapping.setFallbackInheritanceProvider(inheritanceProvider);
+        remapper.remapJar(inputJar, output);
+
+        /*try (ZipFile in = new ZipFile(input);
              ZipOutputStream out = new ZipOutputStream(new FileOutputStream(output))) {
             Enumeration<? extends ZipEntry> entries = in.entries();
-            DeobfRemapper map = new DeobfRemapper(mappings, backwards);
+            InheritanceProvider provider = new InheritanceProvider(in);
+            DeobfRemapper map = new DeobfRemapper(provider, mappings, backwards);
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
                 if (entry.getName().endsWith(".class")) {
@@ -59,7 +73,7 @@ public class TaskDeobfJar extends DefaultTask {
                     }
                 }
             }
-        }
+        }*/
     }
 
     @InputFile

@@ -290,7 +290,7 @@ public class TaskMergeJars extends DefaultTask {
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
             String name = entry.getName();
-            if (name.equalsIgnoreCase("META-INF/MANFIEST.MF")) continue;
+            if (name.startsWith("META-INF/")) continue;
             if (entry.isDirectory()) continue;
             if (!name.endsWith(".class") || name.startsWith(".")) {
                 if (!resources.contains(name)) {
