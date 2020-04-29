@@ -40,6 +40,10 @@ public class ModExtension implements Serializable {
         this.version = version;
     }
 
+    public void setVersion(String version) {
+        version(version);
+    }
+
     public String getName() {
         return name;
     }

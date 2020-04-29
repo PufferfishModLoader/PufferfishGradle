@@ -13,4 +13,7 @@ dependencies {
     implementation gradleApi()
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.google.guava:guava:29.0-jre")
+    implementation("commons-io:commons-io:2.6")
+    implementation("org.ow2.asm:asm:8.0.1")
+    implementation("org.ow2.asm:asm-commons:8.0.1")
 }
