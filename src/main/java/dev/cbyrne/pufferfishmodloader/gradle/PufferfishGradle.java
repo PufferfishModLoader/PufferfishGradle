@@ -189,6 +189,7 @@ public class PufferfishGradle implements Plugin<Project> {
             task.setBackwards(false);
             task.setPlugin(this);
             task.setVersion(version);
+            task.setAccessTransformers(versionObj.getAccessTransformers());
         });
 
         project.getTasks().register(TASK_DOWNLOAD_ASSETS + version, TaskDownloadAssets.class, task -> {
@@ -203,7 +204,7 @@ public class PufferfishGradle implements Plugin<Project> {
     private void setupRunConfigTasks(File workDirBase, VersionJson version, SourceSet sourceSet, String cmc, String smc) {
         Provider<TaskGenRunConfigs> t1 = setupRunConfigTask(new File(workDirBase, "client"), version, true, sourceSet, cmc);
         Provider<TaskGenRunConfigs> t2 = setupRunConfigTask(new File(workDirBase, "server"), version, false, sourceSet, smc);
-        project.getTasks().register("genRunConfigs" + version.getId(), TaskGenRunConfigs.class, task -> task.dependsOn(t1.get().getName(), t2.get().getName(), TASK_DEOBF_JAR + version.getId(), TASK_DOWNLOAD_ASSETS + version.getId()));
+        project.getTasks().register("genRunConfigs" + version.getId(), task -> task.dependsOn(t1.get().getName(), t2.get().getName(), TASK_DEOBF_JAR + version.getId(), TASK_DOWNLOAD_ASSETS + version.getId()));
     }
 
     private Provider<TaskGenRunConfigs> setupRunConfigTask(File workDirectory, VersionJson version, boolean client, SourceSet sourceSet, String mainClass) {
@@ -349,14 +350,6 @@ public class PufferfishGradle implements Plugin<Project> {
 
     public Project getProject() {
         return project;
-    }
-
-    public Configuration getLibraryConfiguration() {
-        return libraryConfiguration;
-    }
-
-    public PGExtension getExtension() {
-        return extension;
     }
 
     public File getCacheDir() {

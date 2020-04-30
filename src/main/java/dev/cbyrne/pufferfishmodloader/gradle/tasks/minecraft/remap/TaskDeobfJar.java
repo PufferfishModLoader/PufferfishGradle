@@ -5,24 +5,12 @@ import dev.cbyrne.pufferfishmodloader.gradle.mappings.MappingProvider;
 import net.md_5.specialsource.*;
 import net.md_5.specialsource.provider.JarProvider;
 import net.md_5.specialsource.provider.JointProvider;
-import org.apache.commons.io.IOUtils;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
-import org.gradle.api.tasks.TaskAction;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.commons.ClassRemapper;
+import org.gradle.api.tasks.*;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
+import java.util.List;
 
 public class TaskDeobfJar extends DefaultTask {
     private PufferfishGradle plugin;
@@ -31,6 +19,7 @@ public class TaskDeobfJar extends DefaultTask {
     private MappingProvider mappings;
     private File output;
     private boolean backwards;
+    private List<String> accessTransformers;
 
     @TaskAction
     public void deobf() throws IOException {
@@ -38,14 +27,18 @@ public class TaskDeobfJar extends DefaultTask {
 
         JarMapping mapping = new JarMapping();
         mappings.loadMappings(plugin, version, mapping);
-        AccessMap accessMap = new AccessMap();
-        // TODO: Add access transformer support
-        RemapperProcessor processor = new RemapperProcessor(null, mapping, accessMap);
-        JarRemapper remapper = new JarRemapper(processor, mapping, null);
+        MappingAccessMap accessMap = new MappingAccessMap();
+        JarRemapper remapper = new JarRemapper(new RemapperProcessor(null, mapping, accessMap), mapping, null);
+        accessMap.setRemapper(remapper);
         Jar inputJar = Jar.init(input);
         JointProvider inheritanceProvider = new JointProvider();
         inheritanceProvider.add(new JarProvider(inputJar));
         mapping.setFallbackInheritanceProvider(inheritanceProvider);
+
+        for (String accessTransformer : accessTransformers) {
+            accessMap.loadAccessTransformer(accessTransformer);
+        }
+
         remapper.remapJar(inputJar, output);
     }
 
@@ -99,5 +92,14 @@ public class TaskDeobfJar extends DefaultTask {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    @InputFiles
+    public List<String> getAccessTransformers() {
+        return accessTransformers;
+    }
+
+    public void setAccessTransformers(List<String> accessTransformers) {
+        this.accessTransformers = accessTransformers;
     }
 }

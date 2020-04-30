@@ -7,14 +7,19 @@ import dev.cbyrne.pufferfishmodloader.gradle.mappings.YarnMappingProvider;
 import groovy.lang.Closure;
 
 import java.io.File;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class TargetExtension {
+public class TargetExtension implements Serializable {
     private final String version;
-    private final PufferfishGradle plugin;
+    private transient final PufferfishGradle plugin;
     private String clientMainClass = "dev.cbyrne.pufferfishmodloader.launch.PMLClientMain";
     private String serverMainClass = "dev.cbyrne.pufferfishmodloader.launch.PMLServerMain";
     private MappingProvider mappings;
     private File runDir;
+    private List<String> accessTransformers = new ArrayList<>();
 
     public TargetExtension(String version, PufferfishGradle plugin) {
         this.version = version;
@@ -25,6 +30,14 @@ public class TargetExtension {
             mcp();
         }
         runDir = new File(plugin.getProject().getProjectDir(), "run/" + version);
+    }
+
+    public void accessTransformer(String... transformers) {
+        accessTransformers.addAll(Arrays.asList(transformers));
+    }
+
+    public List<String> getAccessTransformers() {
+        return accessTransformers;
     }
 
     public void clientMainClass(String main) {
