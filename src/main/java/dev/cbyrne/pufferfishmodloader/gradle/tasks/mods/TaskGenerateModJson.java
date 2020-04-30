@@ -48,7 +48,7 @@ public class TaskGenerateModJson extends DefaultTask {
         for (ModExtension mod : modContainer) {
             JsonObject modObj = new JsonObject();
 
-            modObj.addProperty("artifactId", mod.getName());
+            modObj.addProperty("id", mod.getName());
             modObj.addProperty("version", mod.getVersion());
             modObj.add("dependencies", listToJsonArray(mod.getDependencies(), JsonPrimitive::new));
             modObj.add("optional_dependencies", listToJsonArray(mod.getOptionalDependencies(), JsonPrimitive::new));
