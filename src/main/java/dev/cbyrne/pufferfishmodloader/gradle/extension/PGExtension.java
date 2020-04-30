@@ -15,11 +15,20 @@ public class PGExtension {
     private SourceSet mainSourceSet;
     private final Set<TargetExtension> targetVersions = new HashSet<>();
     private final PufferfishGradle plugin; // Public so people can still access things in project from our extension
+    private boolean separateVersionJars;
 
     public PGExtension(PufferfishGradle plugin) {
         this.plugin = plugin;
         modContainer = plugin.getProject().container(ModExtension.class, new ModExtensionFactory(plugin.getProject()));
         mainSourceSet = plugin.getProject().getConvention().getPlugin(JavaPluginConvention.class).getSourceSets().getByName("main");
+    }
+
+    public void separateVersionJars(boolean separate) {
+        separateVersionJars = separate;
+    }
+
+    public boolean isSeparateVersionJars() {
+        return separateVersionJars;
     }
 
     public void target(String... versions) {

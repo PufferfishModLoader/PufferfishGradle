@@ -23,6 +23,7 @@ import org.apache.commons.io.IOUtils;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
@@ -40,6 +41,7 @@ import java.util.function.Consumer;
 
 import static dev.cbyrne.pufferfishmodloader.gradle.utils.Constants.*;
 
+@SuppressWarnings("UnstableApiUsage")
 public class PufferfishGradle implements Plugin<Project> {
     public static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
@@ -89,9 +91,11 @@ public class PufferfishGradle implements Plugin<Project> {
                         this
                 )));
             }
-            Task task = p.getTasks().create("setup");
-            task.setGroup("pufferfishgradle");
-            task.dependsOn(taskDeps.toArray(new Object[0]));
+
+            p.getTasks().register("setup", task -> {
+                task.setGroup("pufferfishgradle");
+                task.dependsOn(taskDeps.toArray(new Object[0]));
+            });
 
             setupModsJson();
 
@@ -149,75 +153,87 @@ public class PufferfishGradle implements Plugin<Project> {
             }
         }
 
-        runWithJarTask(jar -> {
-            jar.dependsOn(sourceSet.getClassesTaskName());
-            jar.from(sourceSet.getOutput());
-        });
+        if (extension.isSeparateVersionJars()) {
+            project.getTasks().register(sourceSet.getJarTaskName(), Jar.class, task -> {
+                task.dependsOn(sourceSet.getClassesTaskName(), extension.getMainSourceSet().getClassesTaskName());
+                task.from(sourceSet.getOutput());
+                task.from(extension.getMainSourceSet().getOutput());
+                task.getArchiveClassifier().set(version);
+                task.setGroup("build");
+            });
+
+            project.getTasks().getByName("assemble").dependsOn(sourceSet.getJarTaskName());
+        } else {
+            runWithJarTask(jar -> {
+                jar.dependsOn(sourceSet.getClassesTaskName());
+                jar.from(sourceSet.getOutput());
+            });
+        }
 
         // Set up tasks
-        TaskDownloadJar clientJar = setupJarDownload(json, json.getDownloads().getClient(), TASK_DOWNLOAD_CLIENT, "client");
-        TaskDownloadJar serverJar = setupJarDownload(json, json.getDownloads().getServer(), TASK_DOWNLOAD_SERVER, "server");
+        Provider<TaskDownloadJar> clientJar = setupJarDownload(json, json.getDownloads().getClient(), TASK_DOWNLOAD_CLIENT, "client");
+        Provider<TaskDownloadJar> serverJar = setupJarDownload(json, json.getDownloads().getServer(), TASK_DOWNLOAD_SERVER, "server");
 
-        TaskMergeJars mergeJars = project.getTasks().create(TASK_MERGE_JARS + version, TaskMergeJars.class);
-        mergeJars.setClientJar(clientJar.getDest());
-        mergeJars.setServerJar(serverJar.getDest());
-        mergeJars.setOutputJar(new File(cacheDir, "versions/" + version + "/merged.jar"));
-        mergeJars.dependsOn(clientJar.getName(), serverJar.getName());
+        Provider<TaskMergeJars> mergeJars = project.getTasks().register(TASK_MERGE_JARS + version, TaskMergeJars.class, task -> {
+            task.setClientJar(clientJar.get().getDest());
+            task.setServerJar(serverJar.get().getDest());
+            task.setOutputJar(new File(cacheDir, "versions/" + version + "/merged.jar"));
+            task.dependsOn(clientJar.get().getName(), serverJar.get().getName());
+        });
 
-        TaskDeobfJar deobfJar = project.getTasks().create(TASK_DEOBF_JAR + version, TaskDeobfJar.class);
-        deobfJar.setInput(mergeJars.getOutputJar());
-        deobfJar.setMappings(versionObj.getMappings());
-        deobfJar.setOutput(new File(cacheDir, "repo/net/minecraft/minecraft/" + version + "/minecraft-" + version + ".jar"));
-        deobfJar.dependsOn(mergeJars.getName());
-        deobfJar.setBackwards(false);
-        deobfJar.setPlugin(this);
-        deobfJar.setVersion(version);
+        project.getTasks().register(TASK_DEOBF_JAR + version, TaskDeobfJar.class, task -> {
+            task.setInput(mergeJars.get().getOutputJar());
+            task.setMappings(versionObj.getMappings());
+            task.setOutput(new File(cacheDir, "repo/net/minecraft/minecraft/" + version + "/minecraft-" + version + ".jar"));
+            task.dependsOn(mergeJars.get().getName());
+            task.setBackwards(false);
+            task.setPlugin(this);
+            task.setVersion(version);
+        });
 
-        TaskDownloadAssets downloadAssets = project.getTasks().create(TASK_DOWNLOAD_ASSETS + version, TaskDownloadAssets.class);
-        downloadAssets.setPlugin(this);
-        downloadAssets.setVersion(json);
+        project.getTasks().register(TASK_DOWNLOAD_ASSETS + version, TaskDownloadAssets.class, task -> {
+            task.setPlugin(this);
+            task.setVersion(json);
+        });
 
-        Task task = setupRunConfigTasks(versionObj.getRunDir(), json, sourceSet, versionObj.getClientMainClass(), versionObj.getServerMainClass());
-        task.dependsOn(deobfJar.getName());
-        return task.getName();
+        setupRunConfigTasks(versionObj.getRunDir(), json, sourceSet, versionObj.getClientMainClass(), versionObj.getServerMainClass());
+        return "genRunConfigs" + version;
     }
 
-    private Task setupRunConfigTasks(File workDirBase, VersionJson version, SourceSet sourceSet, String cmc, String smc) {
-        Task t1 = setupRunConfigTask(new File(workDirBase, "client"), version, true, sourceSet, cmc);
-        Task t2 = setupRunConfigTask(new File(workDirBase, "server"), version, false, sourceSet, smc);
-        Task t3 = project.getTasks().create("genRunConfigs" + version.getId());
-        t3.dependsOn(t1.getName(), t2.getName(), TASK_DOWNLOAD_ASSETS + version.getId());
-        return t3;
+    private void setupRunConfigTasks(File workDirBase, VersionJson version, SourceSet sourceSet, String cmc, String smc) {
+        Provider<TaskGenRunConfigs> t1 = setupRunConfigTask(new File(workDirBase, "client"), version, true, sourceSet, cmc);
+        Provider<TaskGenRunConfigs> t2 = setupRunConfigTask(new File(workDirBase, "server"), version, false, sourceSet, smc);
+        project.getTasks().register("genRunConfigs" + version.getId(), TaskGenRunConfigs.class, task -> task.dependsOn(t1.get().getName(), t2.get().getName(), TASK_DEOBF_JAR + version.getId(), TASK_DOWNLOAD_ASSETS + version.getId()));
     }
 
-    private Task setupRunConfigTask(File workDirectory, VersionJson version, boolean client, SourceSet sourceSet, String mainClass) {
+    private Provider<TaskGenRunConfigs> setupRunConfigTask(File workDirectory, VersionJson version, boolean client, SourceSet sourceSet, String mainClass) {
         String name = "genRunConfig" + version.getId();
         if (client) {
             name += "Client";
         } else {
             name += "Server";
         }
-        String configName = "Minecraft " + version.getId() + ' ';
-        if (client) {
-            configName += "Client";
-        } else {
-            configName += "Server";
-        }
-        TaskGenRunConfigs task = project.getTasks().create(name, TaskGenRunConfigs.class);
-        task.setSourceSetName(sourceSet.getName());
-        task.setConfigName(configName);
-        task.setOptions(new ArrayList<>());
-        task.setWorkingDirectory(workDirectory);
-        task.setVmOptions(new ArrayList<>());
-        if (version.getArguments() != null && version.getArguments().getJvm() != null && OperatingSystem.current() == OperatingSystem.MACOS) {
-            task.getVmOptions().add("-XstartOnFirstThread");
-        }
-        task.setEnvironmentVars(new HashMap<>());
-        task.getEnvironmentVars().put("MAIN_CLASS", mainClass);
-        task.getEnvironmentVars().put("ASSET_DIRECTORY", new File(cacheDir, "assets").getAbsolutePath());
-        task.getEnvironmentVars().put("ASSET_INDEX", version.getAssetIndex().getId());
-        task.getEnvironmentVars().put("RUN_DIRECTORY", workDirectory.getAbsolutePath());
-        return task;
+        return project.getTasks().register(name, TaskGenRunConfigs.class, task -> {
+            String configName = "Minecraft " + version.getId() + ' ';
+            if (client) {
+                configName += "Client";
+            } else {
+                configName += "Server";
+            }
+            task.setSourceSetName(sourceSet.getName());
+            task.setConfigName(configName);
+            task.setOptions(new ArrayList<>());
+            task.setWorkingDirectory(workDirectory);
+            task.setVmOptions(new ArrayList<>());
+            if (version.getArguments() != null && version.getArguments().getJvm() != null && OperatingSystem.current() == OperatingSystem.MACOS) {
+                task.getVmOptions().add("-XstartOnFirstThread");
+            }
+            task.setEnvironmentVars(new HashMap<>());
+            task.getEnvironmentVars().put("MAIN_CLASS", mainClass);
+            task.getEnvironmentVars().put("ASSET_DIRECTORY", new File(cacheDir, "assets").getAbsolutePath());
+            task.getEnvironmentVars().put("ASSET_INDEX", version.getAssetIndex().getId());
+            task.getEnvironmentVars().put("RUN_DIRECTORY", workDirectory.getAbsolutePath());
+        });
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -230,12 +246,12 @@ public class PufferfishGradle implements Plugin<Project> {
         }
     }
 
-    private TaskDownloadJar setupJarDownload(VersionJson version, Artifact artifact, String taskBaseName, String type) {
-        TaskDownloadJar task = project.getTasks().create(taskBaseName + version.getId(), TaskDownloadJar.class);
-        task.setUrl(artifact.getUrl());
-        task.setDest(new File(cacheDir, "versions/" + version.getId() + "/" + type + ".jar"));
-        task.setSha1(artifact.getSha1());
-        return task;
+    private Provider<TaskDownloadJar> setupJarDownload(VersionJson version, Artifact artifact, String taskBaseName, String type) {
+        return project.getTasks().register(taskBaseName + version.getId(), TaskDownloadJar.class, task -> {
+            task.setUrl(artifact.getUrl());
+            task.setDest(new File(cacheDir, "versions/" + version.getId() + "/" + type + ".jar"));
+            task.setSha1(artifact.getSha1());
+        });
     }
 
     public VersionJson getVersionJson(String version) {
@@ -321,13 +337,13 @@ public class PufferfishGradle implements Plugin<Project> {
     @SuppressWarnings("UnstableApiUsage")
     private void setupModsJson() {
         if (extension.getModContainer().isEmpty()) return;
-        TaskGenerateModJson modJsonTask = project.getTasks().create(TASK_GEN_MODS_JSON, TaskGenerateModJson.class);
-        modJsonTask.setLibraryConfiguration(libraryConfiguration);
-        modJsonTask.setModContainer(extension.getModContainer());
-        modJsonTask.setOutput(new File(modJsonTask.getTemporaryDir(), "mods.json"));
-
         ProcessResources processResourcesTask = (ProcessResources) project.getTasks().getByName(extension.getMainSourceSet().getProcessResourcesTaskName());
-        processResourcesTask.from(modJsonTask.getOutput());
+        project.getTasks().register(TASK_GEN_MODS_JSON, TaskGenerateModJson.class, task -> {
+            task.setLibraryConfiguration(libraryConfiguration);
+            task.setModContainer(extension.getModContainer());
+            task.setOutput(new File(task.getTemporaryDir(), "mods.json"));
+            processResourcesTask.from(task.getOutput());
+        });
         processResourcesTask.dependsOn(TASK_GEN_MODS_JSON);
     }
 
