@@ -4,9 +4,22 @@ import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 import net.md_5.specialsource.JarMapping;
 
 public abstract class MappingProvider {
+    private JarMapping cache;
+
     public abstract void initialize(PufferfishGradle plugin, String mcVersion);
 
-    public void load(PufferfishGradle plugin, String version, JarMapping dest) {
+    public void loadMappings(PufferfishGradle plugin, String version, JarMapping dest) {
+        if (cache == null) {
+            cache = new JarMapping();
+            load(plugin, version, cache);
+        }
+        dest.classes.putAll(cache.classes);
+        dest.methods.putAll(cache.methods);
+        dest.fields.putAll(cache.fields);
+        dest.packages.putAll(cache.packages);
+    }
+
+    protected void load(PufferfishGradle plugin, String version, JarMapping dest) {
 
     }
 

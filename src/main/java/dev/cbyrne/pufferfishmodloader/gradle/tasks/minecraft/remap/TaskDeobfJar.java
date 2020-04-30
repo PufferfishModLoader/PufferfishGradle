@@ -37,7 +37,7 @@ public class TaskDeobfJar extends DefaultTask {
         output.getParentFile().mkdirs();
 
         JarMapping mapping = new JarMapping();
-        mappings.load(plugin, version, mapping);
+        mappings.loadMappings(plugin, version, mapping);
         AccessMap accessMap = new AccessMap();
         // TODO: Add access transformer support
         RemapperProcessor processor = new RemapperProcessor(null, mapping, accessMap);
@@ -47,33 +47,6 @@ public class TaskDeobfJar extends DefaultTask {
         inheritanceProvider.add(new JarProvider(inputJar));
         mapping.setFallbackInheritanceProvider(inheritanceProvider);
         remapper.remapJar(inputJar, output);
-
-        /*try (ZipFile in = new ZipFile(input);
-             ZipOutputStream out = new ZipOutputStream(new FileOutputStream(output))) {
-            Enumeration<? extends ZipEntry> entries = in.entries();
-            InheritanceProvider provider = new InheritanceProvider(in);
-            DeobfRemapper map = new DeobfRemapper(provider, mappings, backwards);
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (entry.getName().endsWith(".class")) {
-                    byte[] data;
-                    try (InputStream stream = in.getInputStream(entry)) {
-                        data = IOUtils.toByteArray(stream);
-                    }
-                    ClassReader reader = new ClassReader(data);
-                    ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    ClassRemapper remapper = new ClassRemapper(writer, map);
-                    reader.accept(remapper, 0);
-                    out.putNextEntry(new ZipEntry(map.map(entry.getName().substring(0, entry.getName().length() - 6)) + ".class"));
-                    out.write(writer.toByteArray());
-                } else {
-                    out.putNextEntry(new ZipEntry(entry.getName()));
-                    try (InputStream stream = in.getInputStream(entry)) {
-                        IOUtils.copy(stream, out);
-                    }
-                }
-            }
-        }*/
     }
 
     @InputFile
