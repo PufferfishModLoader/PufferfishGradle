@@ -8,7 +8,7 @@ public abstract class MappingProvider {
 
     public abstract void initialize(PufferfishGradle plugin, String mcVersion);
 
-    public void loadMappings(PufferfishGradle plugin, String version, JarMapping dest) {
+    public final void loadMappings(PufferfishGradle plugin, String version, JarMapping dest) {
         if (cache == null) {
             cache = new JarMapping();
             load(plugin, version, cache);
@@ -19,9 +19,7 @@ public abstract class MappingProvider {
         dest.packages.putAll(cache.packages);
     }
 
-    protected void load(PufferfishGradle plugin, String version, JarMapping dest) {
-
-    }
+    protected abstract void load(PufferfishGradle plugin, String version, JarMapping dest);
 
     public abstract void checkParamsCorrect(PufferfishGradle plugin, String version);
 }

@@ -69,7 +69,6 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
 
     @Override
     public void load(PufferfishGradle plugin, String version, JarMapping dest) {
-        super.load(plugin, version, dest);
         Configuration srg = plugin.getProject().getConfigurations().create(Constants.INTERMEDIARY_CONFIGURATION_NAME + version);
         Configuration mcp = plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"));

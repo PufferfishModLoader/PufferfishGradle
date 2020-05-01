@@ -24,5 +24,6 @@ public class MappingProviderRegistry {
     static {
         register("yarn", YarnMappingProvider::new);
         register("mcp", McpMappingProvider::new);
+        register("mojang", MojangMappingProvider::new);
     }
 }

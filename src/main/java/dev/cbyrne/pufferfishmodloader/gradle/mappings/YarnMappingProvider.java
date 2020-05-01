@@ -50,7 +50,6 @@ public class YarnMappingProvider extends MappingProvider implements Serializable
 
     @Override
     public void load(PufferfishGradle plugin, String version, JarMapping dest) {
-        super.load(plugin, version, dest);
         plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://maven.fabricmc.net"));
         plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
         plugin.getProject().getDependencies().add(Constants.MAPPINGS_CONFIGURATION_NAME + version, ImmutableMap.of(
