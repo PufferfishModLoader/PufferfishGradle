@@ -43,7 +43,7 @@ public class MojangMappingProvider extends MappingProvider implements Serializab
 
     @Override
     protected void load(PufferfishGradle plugin, String version, JarMapping dest) {
-        plugin.getProject().getLogger().warn("By using the Mojang mappings you acknowledge that your mod will not be open source. The PufferfishGradle team is not responsible for any misuse.");
+        plugin.getProject().getLogger().warn("By using the Mojang mappings, you acknowledge that your mod will not be open source due to Mojang's licensing on their official mappings. The PufferfishGradle team is not responsible for any project utilizing Mojang's official mappings.");
         VersionJson json = plugin.getVersionJson(targetVersion);
         Artifact clientMappings = json.getDownloads().getClientMappings();
         Artifact serverMappings = json.getDownloads().getServerMappings();
