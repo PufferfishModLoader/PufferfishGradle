@@ -11,9 +11,14 @@ import java.net.URLConnection;
 
 public class HttpUtils {
     public static void download(URL url, File dest, String sha1, int maxTries) throws IOException {
+        download(url, dest, sha1, maxTries, false);
+    }
+
+    public static void download(URL url, File dest, String sha1, int maxTries, boolean ignoreInitialInput) throws IOException {
         dest.getParentFile().mkdirs();
-        for (int tries = 0; !dest.exists() || (sha1 != null && !HashUtils.sha1(dest).equalsIgnoreCase(sha1)); tries++) {
+        for (int tries = 0; !dest.exists() || (tries == 0 && ignoreInitialInput) || (sha1 == null || !HashUtils.sha1(dest).equalsIgnoreCase(sha1)); tries++) {
             if (tries >= maxTries) {
+                dest.delete();
                 throw new GradleException("Couldn't download " + url);
             }
             try {
@@ -23,6 +28,7 @@ public class HttpUtils {
                     IOUtils.copy(stream, outputStream);
                 }
             } catch (Exception e) {
+                dest.delete();
                 if (tries == maxTries - 1) {
                     throw new GradleException("Couldn't download " + url, e);
                 }

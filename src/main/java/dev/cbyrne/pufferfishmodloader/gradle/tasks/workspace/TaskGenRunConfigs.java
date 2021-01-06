@@ -1,12 +1,9 @@
 package dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace;
 
 import dev.cbyrne.pufferfishmodloader.Start;
-import dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.*;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -27,28 +24,36 @@ public class TaskGenRunConfigs extends DefaultTask {
     private String configName;
     private List<String> vmOptions = new ArrayList<>();
     private List<String> options = new ArrayList<>();
-    private File workingDirectory;
+    private String workingDirectory;
     private Map<String, String> environmentVars = new HashMap<>();
     private String sourceSetName;
+    private final File outputFile;
+
+    public TaskGenRunConfigs() {
+        outputFile = new File(getTemporaryDir(), "temp.xml");
+    }
 
     @TaskAction
     public void generate() throws IOException, ParserConfigurationException, SAXException, TransformerException {
-        File root = getProject().getProjectDir().getCanonicalFile();
         File file = null;
-        while (file == null && !root.equals(getProject().getRootDir().getCanonicalFile().getParentFile())) {
-            file = new File(root, ".idea/workspace.xml");
-            if (!file.exists()) {
-                file = null;
-                for (File f : Objects.requireNonNull(root.listFiles())) {
-                    if (f.isFile() && f.getName().endsWith(".iws")) {
-                        file = f;
-                        break;
+        try {
+            File root = getProject().getProjectDir().getCanonicalFile();
+            while (file == null && !root.equals(getProject().getRootDir().getCanonicalFile().getParentFile())) {
+                file = new File(root, ".idea/workspace.xml");
+                if (!file.exists()) {
+                    file = null;
+                    for (File f : Objects.requireNonNull(root.listFiles())) {
+                        if (f.isFile() && f.getName().endsWith(".iws")) {
+                            file = f;
+                            break;
+                        }
                     }
                 }
+                File parent = root.getParentFile();
+                if (parent == null) break;
+                root = parent;
             }
-            File parent = root.getParentFile();
-            if (parent == null) break;
-            root = parent;
+        } catch (IOException ignored) {
         }
         if (file == null || !file.exists()) {
             throw new GradleException("Couldn't find IntelliJ workspace file");
@@ -102,8 +107,8 @@ public class TaskGenRunConfigs extends DefaultTask {
         addElement(child, "option", "name", "PROGRAM_PARAMETERS", "value", getParamString(options));
         addElement(child, "option", "name", "VM_PARAMETERS", "value", getParamString(vmOptions));
 
-        workingDirectory.mkdirs();
-        addElement(child, "option", "name", "WORKING_DIRECTORY", "value", workingDirectory.getAbsolutePath());
+        new File(workingDirectory).mkdirs();
+        addElement(child, "option", "name", "WORKING_DIRECTORY", "value", workingDirectory);
         IdeaModel model = (IdeaModel) getProject().getExtensions().getByName("idea");
         addElement(child, "module", "name", model.getModule().getName() + "." + sourceSetName);
         Element child2 = addElement(child, "method", "v", "2");
@@ -126,6 +131,11 @@ public class TaskGenRunConfigs extends DefaultTask {
         StreamResult result = new StreamResult(file);
 
         transformer.transform(source, result);
+
+        DOMSource source1 = new DOMSource(child);
+        StreamResult result1 = new StreamResult(outputFile);
+
+        transformer.transform(source1, result1);
     }
 
     private String getParamString(List<String> list) {
@@ -149,6 +159,11 @@ public class TaskGenRunConfigs extends DefaultTask {
         }
         owner.appendChild(e);
         return e;
+    }
+
+    @OutputFile
+    public File getOutputFile() {
+        return outputFile;
     }
 
     @Input
@@ -179,12 +194,12 @@ public class TaskGenRunConfigs extends DefaultTask {
     }
 
     @Input
-    public File getWorkingDirectory() {
+    public String getWorkingDirectory() {
         return workingDirectory;
     }
 
     public void setWorkingDirectory(File workingDirectory) {
-        this.workingDirectory = workingDirectory;
+        this.workingDirectory = workingDirectory.getAbsolutePath();
     }
 
     @Input

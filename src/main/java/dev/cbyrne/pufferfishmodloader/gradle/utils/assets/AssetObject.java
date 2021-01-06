@@ -1,6 +1,8 @@
 package dev.cbyrne.pufferfishmodloader.gradle.utils.assets;
 
-public class AssetObject {
+import java.io.Serializable;
+
+public class AssetObject implements Serializable {
     private final String hash;
     private final int size;
 

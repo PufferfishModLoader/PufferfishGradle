@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.util.List;
 
 public class TaskDeobfJar extends DefaultTask {
-    private PufferfishGradle plugin;
+    @Internal
+    private transient PufferfishGradle plugin;
+    @Input
     private String version;
     private File input;
     private MappingProvider mappings;

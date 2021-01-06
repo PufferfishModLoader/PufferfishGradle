@@ -1,12 +1,13 @@
 plugins {
-    id 'java'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
 }
 
 group 'dev.cbyrne.pufferfishmodloader.gradle'
 version '1.0.0'
 
 repositories {
-    mavenCentral()
+    jcenter()
     maven {
         url 'https://libraries.minecraft.net'
     }
@@ -24,3 +25,26 @@ dependencies {
         exclude module: 'asm-commons'
     }
 }
+
+gradlePlugin {
+    plugins {
+        pufferfishGradle {
+            id = 'dev.cbyrne.pufferfishmodloader.gradle'
+            implementationClass = 'dev.cbyrne.pufferfishmodloader.gradle.PufferfishGradle'
+        }
+    }
+}
+
+/*
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.groupId
+            artifactId = project.artifactId
+            version = project.version
+
+            from components.java
+        }
+    }
+}
+ */

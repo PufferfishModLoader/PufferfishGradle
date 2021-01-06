@@ -14,6 +14,7 @@ import dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace.TaskDownloadAssets;
 import dev.cbyrne.pufferfishmodloader.gradle.tasks.workspace.TaskGenRunConfigs;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.HttpUtils;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.InputStreamConsumer;
+import dev.cbyrne.pufferfishmodloader.gradle.utils.assets.AssetIndex;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.*;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.Rule;
 import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.json.typeadapters.ArgumentTypeAdapter;
@@ -120,6 +121,18 @@ public class PufferfishGradle implements Plugin<Project> {
         project.getDependencies().add(sourceSet.getImplementationConfigurationName(), extension.getMainSourceSet().getRuntimeClasspath());
 
         VersionJson json = getVersionJson(version);
+        File indexFile = new File(getCacheDir(), "assets/indexes/" + json.getAssetIndex().getId() + ".json");
+        try {
+            HttpUtils.download(json.getAssetIndex().getUrl(), indexFile, json.getAssetIndex().getSha1(), 5);
+        } catch (IOException e) {
+            throw new GradleException("Can't download asset index file", e);
+        }
+        AssetIndex assetIndex;
+        try (FileReader reader = new FileReader(indexFile)) {
+            assetIndex = GSON.fromJson(reader, AssetIndex.class);
+        } catch (IOException e) {
+            throw new GradleException("Can't read asset index file", e);
+        }
         for (Library library : json.getLibraries()) {
             if (!library.getName().equals("tv.twitch:twitch-external-platform:4.5") && Rule.allow(library.getRules(), Maps.newHashMap())) {
                 if (library.getDownloads() != null && library.getDownloads().getArtifact() != null) {
@@ -197,7 +210,7 @@ public class PufferfishGradle implements Plugin<Project> {
 
         project.getTasks().register(TASK_DOWNLOAD_ASSETS + version, TaskDownloadAssets.class, task -> {
             task.setPlugin(this);
-            task.setVersion(json);
+            task.setAssetIndex(assetIndex);
         });
 
         setupRunConfigTasks(versionObj.getRunDir(), json, sourceSet, versionObj.getClientMainClass(), versionObj.getServerMainClass());
