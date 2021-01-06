@@ -12,6 +12,7 @@ import dev.cbyrne.pufferfishmodloader.gradle.utils.Pair;
 import net.md_5.specialsource.JarMapping;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 
 import java.io.*;
 import java.net.MalformedURLException;
@@ -71,7 +72,9 @@ public class McpMappingProvider extends MappingProvider implements Serializable 
     public void load(PufferfishGradle plugin, String version, JarMapping dest) {
         Configuration srg = plugin.getProject().getConfigurations().create(Constants.INTERMEDIARY_CONFIGURATION_NAME + version);
         Configuration mcp = plugin.getProject().getConfigurations().create(Constants.MAPPINGS_CONFIGURATION_NAME + version);
-        plugin.getProject().getRepositories().maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"));
+        plugin.getProject().getRepositories()
+                .maven(maven -> maven.setUrl("https://files.minecraftforge.net/maven"))
+                .metadataSources(MavenArtifactRepository.MetadataSources::artifact);
         plugin.getProject().getDependencies().add(mcp.getName(), ImmutableMap.of(
                 "group", "de.oceanlabs.mcp",
                 "name", "mcp_" + channel,

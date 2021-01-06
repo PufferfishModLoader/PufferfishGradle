@@ -22,6 +22,7 @@ import dev.cbyrne.pufferfishmodloader.gradle.utils.versions.manifest.VersionMani
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
@@ -77,8 +78,10 @@ public class PufferfishGradle implements Plugin<Project> {
             getJavaPlugin().setTargetCompatibility(JavaVersion.VERSION_1_8);
 
             p.getRepositories().mavenCentral();
-            p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl("https://libraries.minecraft.net"));
-            p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl(new File(cacheDir, "repo").toURI()));
+            p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl("https://libraries.minecraft.net"))
+                    .metadataSources(MavenArtifactRepository.MetadataSources::artifact);
+            p.getRepositories().maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl(new File(cacheDir, "repo").toURI()))
+                    .metadataSources(MavenArtifactRepository.MetadataSources::artifact);
 
             List<String> taskDeps = new ArrayList<>();
             for (TargetExtension version : extension.getTargetVersions()) {
@@ -109,12 +112,12 @@ public class PufferfishGradle implements Plugin<Project> {
         // Set up source set
         JavaPluginConvention javaPlugin = getJavaPlugin();
         SourceSet sourceSet = javaPlugin.getSourceSets().maybeCreate("mc" + version);
-        project.getDependencies().add(sourceSet.getCompileConfigurationName(), ImmutableMap.of(
+        project.getDependencies().add(sourceSet.getImplementationConfigurationName(), ImmutableMap.of(
                 "group", MINECRAFT_GROUP,
                 "name", MINECRAFT_ARTIFACT,
                 "version", version
         ));
-        project.getDependencies().add(sourceSet.getCompileConfigurationName(), extension.getMainSourceSet().getRuntimeClasspath());
+        project.getDependencies().add(sourceSet.getImplementationConfigurationName(), extension.getMainSourceSet().getRuntimeClasspath());
 
         VersionJson json = getVersionJson(version);
         for (Library library : json.getLibraries()) {
@@ -131,9 +134,9 @@ public class PufferfishGradle implements Plugin<Project> {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), project.files(f));
+                    project.getDependencies().add(sourceSet.getImplementationConfigurationName(), project.files(f));
                 } else {
-                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), library.getName());
+                    project.getDependencies().add(sourceSet.getImplementationConfigurationName(), library.getName());
                 }
                 if (library.getNatives() != null && library.getNatives().containsKey(OperatingSystem.current())) {
                     LibraryArtifact artifact = library.getDownloads().getClassifiers().get(library.getNatives().get(OperatingSystem.current()));
@@ -148,7 +151,7 @@ public class PufferfishGradle implements Plugin<Project> {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                    project.getDependencies().add(sourceSet.getCompileConfigurationName(), project.files(f));
+                    project.getDependencies().add(sourceSet.getImplementationConfigurationName(), project.files(f));
                 }
             }
         }
