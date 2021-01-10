@@ -204,6 +204,12 @@ class PufferfishGradle : Plugin<Project> {
                 task.dependsOn(*ext.targets.map { "genRunConfigs${it.version}" }.toTypedArray())
             }
 
+            ext.modContainer.forEach {
+                proj.configurations.getByName(ext.mainSourceSet.implementationConfigurationName).extendsFrom(
+                    proj.configurations.getByName("${it.name}Library")
+                )
+            }
+
             val res = (target.tasks.getByName(ext.mainSourceSet.processResourcesTaskName) as AbstractCopyTask)
             res.dependsOn("genModsJson")
             val task = target.tasks.register("genModsJson", TaskCreateModsJson::class.java) { task ->
