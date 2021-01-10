@@ -121,7 +121,7 @@ class PufferfishGradle : Plugin<Project> {
                         task.mainClass = it.clientMainClass
                         task.configName = "Minecraft ${it.version} Client"
                         task.select = true
-                        task.dependsOn(if (ext.separateVersionJars) ext.mainSourceSet.jarTaskName else set.jarTaskName)
+                        task.dependsOn(if (ext.separateVersionJars) set.jarTaskName else ext.mainSourceSet.jarTaskName)
                     }
 
                     target.tasks.register("genServerRunConfig${it.version}", TaskGenRunConfig::class.java) { task ->
@@ -151,7 +151,7 @@ class PufferfishGradle : Plugin<Project> {
                         task.classpath = set.runtimeClasspath
                         task.mainClass = it.clientMainClass
                         task.group = "minecraft"
-                        task.dependsOn(if (ext.separateVersionJars) ext.mainSourceSet.jarTaskName else set.jarTaskName)
+                        task.dependsOn(if (ext.separateVersionJars) set.jarTaskName else ext.mainSourceSet.jarTaskName)
                     }
 
                     target.tasks.register("run${it.version}Server", TaskRunGame::class.java) { task ->
