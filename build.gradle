@@ -1,0 +1,43 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'org.jetbrains.kotlin.jvm' version '1.3.72'
+    id 'maven-publish'
+}
+
+group 'me.dreamhopping.pml'
+version '2.0.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://libraries.minecraft.net'
+    }
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    implementation gradleApi()
+    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'org.ow2.asm:asm-tree:9.0'
+    implementation 'org.ow2.asm:asm-commons:9.0'
+    implementation('net.md-5:SpecialSource:1.8.6') {
+        exclude module: 'asm-commons'
+    }
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.3.8'
+
+    compileOnly 'com.mojang:authlib:1.5.21'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+gradlePlugin {
+    plugins {
+        pufferfishGradle {
+            id = 'me.dreamhopping.pml.gradle'
+            implementationClass = 'me.dreamhopping.pml.gradle.PufferfishGradle'
+        }
+    }
+}
