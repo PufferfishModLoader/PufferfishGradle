@@ -65,9 +65,7 @@ class YarnMappingProvider : MappingProvider() {
             }
         }
 
-        return MappingInfo(classes, fields, methods, emptyMap()).also {
-            File("C:/users/gerrit/documents/testy.json").writeText(GsonBuilder().setPrettyPrinting().create().toJson(it))
-        }
+        return MappingInfo(classes, fields, methods, emptyMap())
     }
 
     private suspend fun getVersion(project: Project, requestedVersion: String): String {
