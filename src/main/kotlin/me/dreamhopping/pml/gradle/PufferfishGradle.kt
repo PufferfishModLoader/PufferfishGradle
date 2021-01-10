@@ -5,15 +5,13 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.dreamhopping.pml.gradle.data.Extension
 import me.dreamhopping.pml.gradle.data.TargetExt
+import me.dreamhopping.pml.gradle.mc.LibraryUtil
 import me.dreamhopping.pml.gradle.mc.McOs
 import me.dreamhopping.pml.gradle.mc.MinecraftSetup
 import me.dreamhopping.pml.gradle.mc.MinecraftSetup.cacheDir
 import me.dreamhopping.pml.gradle.mc.MinecraftSetup.repoDir
 import me.dreamhopping.pml.gradle.mc.data.manifest.VersionManifest
-import me.dreamhopping.pml.gradle.tasks.TaskCreateModsJson
-import me.dreamhopping.pml.gradle.tasks.TaskDownloadAssets
-import me.dreamhopping.pml.gradle.tasks.TaskGenRunConfig
-import me.dreamhopping.pml.gradle.tasks.TaskRunGame
+import me.dreamhopping.pml.gradle.tasks.*
 import me.dreamhopping.pml.gradle.utils.Json
 import me.dreamhopping.pml.gradle.utils.VersionUtil
 import me.dreamhopping.pml.gradle.utils.http.Downloader
@@ -38,14 +36,14 @@ class PufferfishGradle : Plugin<Project> {
         val ext = Extension(target)
         val loaderConfig = target.configurations.create("loader")
         target.extensions.add("minecraft", ext)
+        target.repositories.maven {
+            it.setUrl(target.gradle.repoDir.toURI().toURL())
+            it.metadataSources { sources ->
+                sources.artifact()
+            }
+        }
 
         target.afterEvaluate { proj ->
-            proj.repositories.maven {
-                it.setUrl(proj.gradle.repoDir.toURI().toURL())
-                it.metadataSources { sources ->
-                    sources.artifact()
-                }
-            }
             proj.repositories.maven {
                 it.setUrl("https://libraries.minecraft.net")
                 it.metadataSources { sources ->
@@ -168,6 +166,14 @@ class PufferfishGradle : Plugin<Project> {
                         task.server = true
                     }
 
+                    target.tasks.register("genSources${it.version}", TaskGenSources::class.java) { task ->
+                        val classifier = runBlocking { "deobfuscated-${it.mappings.createId(proj, it.mappingVersion)}" }
+                        task.inputJar =
+                            LibraryUtil.getOutputFile(proj, "net.minecraft:joined:${it.version}-$classifier")
+                        task.outputJar = LibraryUtil.getOutputFile(proj, "net.minecraft:joined:${it.version}-$classifier", "sources")
+                        task.libraries = proj.configurations.getByName(TargetExt.getMcLibConfigName(it.version))
+                    }
+
                     target.tasks.register("downloadAssets${it.version}", TaskDownloadAssets::class.java) { task ->
                         json.assetIndex ?: error("Version json does not have asset index")
                         val outputDir = File(proj.gradle.cacheDir, "assets")
@@ -214,6 +220,10 @@ class PufferfishGradle : Plugin<Project> {
             target.tasks.register("genRunConfigs") { task ->
                 task.group = "minecraft"
                 task.dependsOn(*ext.targets.map { "genRunConfigs${it.version}" }.toTypedArray())
+            }
+            target.tasks.register("genSources") { task ->
+                task.group = "minecraft"
+                task.dependsOn(*ext.targets.map { "genSources${it.version}" }.toTypedArray())
             }
 
             ext.modContainer.forEach {

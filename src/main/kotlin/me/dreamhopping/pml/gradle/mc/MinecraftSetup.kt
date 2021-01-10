@@ -65,7 +65,8 @@ object MinecraftSetup {
 
         LibraryUtil.addLibrariesToConfiguration(project, json.libraries, libraryConfig, nativesConfig)
 
-        project.configurations.getByName(set.implementationConfigurationName).extendsFrom(libraryConfig, nativesConfig)
+        libraryConfig.extendsFrom(nativesConfig)
+        project.configurations.getByName(set.implementationConfigurationName).extendsFrom(libraryConfig)
 
         val clientFile = LibraryUtil.getOutputFile(project, "net.minecraft:client:${ext.version}")
         val serverFile = LibraryUtil.getOutputFile(project, "net.minecraft:server:${ext.version}")
@@ -92,7 +93,7 @@ object MinecraftSetup {
 
         val classifier = "deobfuscated-${ext.mappings.createId(project, ext.mappingVersion)}"
 
-        val deobfuscatedFile = LibraryUtil.getOutputFile(project, "net.minecraft:joined:${ext.version}", classifier)
+        val deobfuscatedFile = LibraryUtil.getOutputFile(project, "net.minecraft:joined:${ext.version}-$classifier")
 
         if (!deobfuscatedFile.exists()) {
             println("Deobfuscating")
@@ -100,7 +101,7 @@ object MinecraftSetup {
             JarDeobfuscator.deobf(mergedFile, deobfuscatedFile, maps)
         }
 
-        project.dependencies.add(set.implementationConfigurationName, project.files(deobfuscatedFile))
+        project.dependencies.add(set.implementationConfigurationName, "net.minecraft:joined:${ext.version}-$classifier")
     }
 
     val Gradle.repoDir get() = File(cacheDir, "repo")

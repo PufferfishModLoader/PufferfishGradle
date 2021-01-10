@@ -37,37 +37,33 @@ public class Start {
             boolean hasAccessToken = false;
             boolean hasVersion = false;
             for (String arg : args) {
-                switch (nextArg) {
-                    case ARGUMENT_NAME:
-                        if (arg.equalsIgnoreCase("--username")) {
-                            nextArg = NextArgumentType.USERNAME;
-                        } else if (arg.equalsIgnoreCase("--password")) {
-                            nextArg = NextArgumentType.PASSWORD;
-                        } else {
-                            if (arg.equalsIgnoreCase("--gameDir")) {
-                                hasGameDir = true;
-                            } else if (arg.equalsIgnoreCase("--assetsDir")) {
-                                hasAssetsDir = true;
-                            } else if (arg.equalsIgnoreCase("--assetIndex")) {
-                                hasAssetIndex = true;
-                            } else if (arg.equalsIgnoreCase("-uuid")) {
-                                hasUuid = true;
-                            } else if (arg.equalsIgnoreCase("--accessToken")) {
-                                hasAccessToken = true;
-                            } else if (arg.equalsIgnoreCase("--version")) {
-                                hasVersion = true;
-                            }
-                            targetArgs.add(arg);
+                if (nextArg == NextArgumentType.ARGUMENT_NAME) {
+                    if (arg.equalsIgnoreCase("--username")) {
+                        nextArg = NextArgumentType.USERNAME;
+                    } else if (arg.equalsIgnoreCase("--password")) {
+                        nextArg = NextArgumentType.PASSWORD;
+                    } else {
+                        if (arg.equalsIgnoreCase("--gameDir")) {
+                            hasGameDir = true;
+                        } else if (arg.equalsIgnoreCase("--assetsDir")) {
+                            hasAssetsDir = true;
+                        } else if (arg.equalsIgnoreCase("--assetIndex")) {
+                            hasAssetIndex = true;
+                        } else if (arg.equalsIgnoreCase("-uuid")) {
+                            hasUuid = true;
+                        } else if (arg.equalsIgnoreCase("--accessToken")) {
+                            hasAccessToken = true;
+                        } else if (arg.equalsIgnoreCase("--version")) {
+                            hasVersion = true;
                         }
-                        break;
-                    case USERNAME:
-                        passedUsername = arg;
-                        nextArg = NextArgumentType.ARGUMENT_NAME;
-                        break;
-                    case PASSWORD:
-                        passedPassword = arg;
-                        nextArg = NextArgumentType.ARGUMENT_NAME;
-                        break;
+                        targetArgs.add(arg);
+                    }
+                } else if (nextArg == NextArgumentType.USERNAME) {
+                    passedUsername = arg;
+                    nextArg = NextArgumentType.ARGUMENT_NAME;
+                } else if (nextArg == NextArgumentType.PASSWORD) {
+                    passedPassword = arg;
+                    nextArg = NextArgumentType.ARGUMENT_NAME;
                 }
             }
             String targetUsername = NOT_AUTHENTICATED_USERNAME;
