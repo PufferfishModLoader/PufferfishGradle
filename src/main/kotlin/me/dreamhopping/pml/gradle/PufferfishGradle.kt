@@ -36,6 +36,7 @@ class PufferfishGradle : Plugin<Project> {
         target.plugins.apply(JavaPlugin::class.java)
         target.plugins.apply(IdeaPlugin::class.java)
         val ext = Extension(target)
+        val loaderConfig = target.configurations.create("loader")
         target.extensions.add("minecraft", ext)
 
         target.afterEvaluate { proj ->
@@ -43,7 +44,6 @@ class PufferfishGradle : Plugin<Project> {
                 it.setUrl(proj.gradle.repoDir.toURI().toURL())
                 it.metadataSources { sources ->
                     sources.artifact()
-                    sources.mavenPom()
                 }
             }
             proj.repositories.maven {
@@ -197,6 +197,18 @@ class PufferfishGradle : Plugin<Project> {
                     val config = proj.configurations.maybeCreate("pgMappings${it.version}")
                     it.mappings.addDataToConfiguration(proj, config, it.mappingVersion)
                     MinecraftSetup.setupVersion(proj, it, ext.mainSourceSet, config, manifest)
+
+                    loaderConfig.dependencies.forEach { dep ->
+                        proj.dependencies.add(
+                            set.implementationConfigurationName,
+                            mapOf(
+                                "group" to dep.group,
+                                "name" to dep.name,
+                                "version" to dep.version,
+                                "classifier" to set.name
+                            )
+                        )
+                    }
                 }
             }
             target.tasks.register("genRunConfigs") { task ->
@@ -217,6 +229,8 @@ class PufferfishGradle : Plugin<Project> {
                 task.output = File(task.temporaryDir, "mods.json")
             }
             res.from(task.get().output)
+
+            target.configurations.getByName(ext.mainSourceSet.implementationConfigurationName).extendsFrom(loaderConfig)
         }
     }
 }

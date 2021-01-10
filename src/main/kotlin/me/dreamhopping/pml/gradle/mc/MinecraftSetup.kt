@@ -100,7 +100,7 @@ object MinecraftSetup {
             JarDeobfuscator.deobf(mergedFile, deobfuscatedFile, maps)
         }
 
-        project.dependencies.add(set.implementationConfigurationName, "net.minecraft:joined:${ext.version}:$classifier")
+        project.dependencies.add(set.implementationConfigurationName, project.files(deobfuscatedFile))
     }
 
     val Gradle.repoDir get() = File(cacheDir, "repo")
