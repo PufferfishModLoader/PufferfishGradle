@@ -16,11 +16,9 @@ object DecompilationPreparer : RemapperProcessor(null, null, null) {
         node.methods.forEach { method ->
             var currentIdx = 0
             method.parameters?.forEach {
-                if (method.name == "<init>") println("param ${it.name} valid ${it.name.isValidIdentifier}")
                 if (!it.name.isValidIdentifier) it.name = "var${currentIdx++}"
             }
             method.localVariables?.forEach {
-                if (method.name == "<init>") println("param ${it.name} valid ${it.name.isValidIdentifier}")
                 if (!it.name.isValidIdentifier) it.name = "var${currentIdx++}"
             }
         }
