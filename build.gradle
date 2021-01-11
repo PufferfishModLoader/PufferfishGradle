@@ -7,7 +7,7 @@ plugins {
 sourceCompatibility = targetCompatibility = '1.8'
 
 group 'me.dreamhopping.pml'
-version '2.3.0'
+version '2.3.1'
 
 repositories {
     mavenCentral()
@@ -15,7 +15,7 @@ repositories {
         url 'https://libraries.minecraft.net'
     }
     maven {
-        url 'https://maven.fabricmc.net'
+        url 'https://files.minecraftforge.net/maven'
     }
 }
 
@@ -31,8 +31,7 @@ dependencies {
     }
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.3.8'
 
-    compileOnly 'net.fabricmc:fabric-fernflower:1.3.0' // fetched at runtime as to not need users to add fabricmc maven repo
-
+    compileOnly 'net.minecraftforge:forgeflower:1.5.478.18' // fetched at runtime
     compileOnly 'com.mojang:authlib:1.5.21'
 }
 

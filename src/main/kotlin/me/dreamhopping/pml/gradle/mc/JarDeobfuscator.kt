@@ -2,13 +2,12 @@ package me.dreamhopping.pml.gradle.mc
 
 import me.dreamhopping.pml.gradle.data.TargetExt
 import me.dreamhopping.pml.gradle.mappings.MappingInfo
-import me.dreamhopping.pml.gradle.mappings.MappingProvider
 import me.dreamhopping.pml.gradle.mc.access.PGAccessMap
+import me.dreamhopping.pml.gradle.mc.deobf.DecompilationPreparer
 import net.md_5.specialsource.*
 import net.md_5.specialsource.provider.JarProvider
 import net.md_5.specialsource.provider.JointProvider
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
 import java.io.File
 
 object JarDeobfuscator {
@@ -25,7 +24,7 @@ object JarDeobfuscator {
         ext.accessTransformers.forEach {
             map.loadAccessTransformer(File(project.projectDir, it))
         }
-        val remapper = JarRemapper(RemapperProcessor(null, mapping, map), mapping, null)
+        val remapper = JarRemapper(RemapperProcessor(null, mapping, map), mapping, DecompilationPreparer)
         map.maps = remapper
 
         val inputJar = Jar.init(input)

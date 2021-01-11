@@ -27,8 +27,8 @@ open class TaskGenSources : DefaultTask() {
     @TaskAction
     fun decompile() {
         // Run the actual decompiler with fernflower in the classpath
-        val fernFlower = File(project.gradle.cacheDir, "libraries/fernflower.jar")
-        runBlocking { Downloader.download("https://maven.fabricmc.net/net/fabricmc/fabric-fernflower/1.3.0/fabric-fernflower-1.3.0.jar", fernFlower) }
+        val fernFlower = File(project.gradle.cacheDir, "libraries/forgeflower.jar")
+        runBlocking { Downloader.download("http://files.minecraftforge.net/maven/net/minecraftforge/forgeflower/1.5.478.18/forgeflower-1.5.478.18.jar", fernFlower) }
         val classLoader = BetterURLClassLoader(arrayOf(fernFlower.toURI().toURL()), javaClass.classLoader)
         val decompilerClass = Class.forName(Decompiler::class.java.name, false, classLoader)
         val decompilerField = decompilerClass.getDeclaredField("INSTANCE")
