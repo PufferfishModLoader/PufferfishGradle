@@ -98,7 +98,7 @@ object MinecraftSetup {
         if (!deobfuscatedFile.exists()) {
             println("Deobfuscating")
             val maps = ext.mappings.load(project, config, ext.mappingVersion)
-            JarDeobfuscator.deobf(mergedFile, deobfuscatedFile, maps)
+            JarDeobfuscator.deobf(mergedFile, deobfuscatedFile, maps, ext, project)
         }
 
         project.dependencies.add(set.implementationConfigurationName, "net.minecraft:joined:${ext.version}-$classifier")
