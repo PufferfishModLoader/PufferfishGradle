@@ -8,9 +8,13 @@ import java.util.zip.ZipFile
 object BytecodeProvider : IBytecodeProvider {
     override fun getBytecode(externalPath: String, internalPath: String?): ByteArray {
         val file = File(externalPath)
-        return if (internalPath == null) InterpreterUtil.getBytes(file)
-        else ZipFile(file).use {
-            InterpreterUtil.getBytes(it, it.getEntry(internalPath) ?: error("entry not found: $internalPath"))
-        }
+        return internalPath?.let {
+            ZipFile(file).use { zip ->
+                InterpreterUtil.getBytes(
+                    zip,
+                    zip.getEntry(it) ?: error("entry not found: $internalPath")
+                )
+            }
+        } ?: InterpreterUtil.getBytes(file)
     }
 }

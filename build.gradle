@@ -7,13 +7,16 @@ plugins {
 sourceCompatibility = targetCompatibility = '1.8'
 
 group 'me.dreamhopping.pml'
-version '2.2.1'
+version '3.0.0'
+
+sourceSets {
+    runtime {
+
+    }
+}
 
 repositories {
     mavenCentral()
-    maven {
-        url 'https://libraries.minecraft.net'
-    }
     maven {
         url 'https://maven.fabricmc.net'
     }
@@ -26,18 +29,38 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'org.ow2.asm:asm-tree:9.0'
     implementation 'org.ow2.asm:asm-commons:9.0'
-    implementation('net.md-5:SpecialSource:1.8.6') {
-        exclude module: 'asm-commons'
-    }
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.3.8'
-
-    compileOnly 'net.fabricmc:fabric-fernflower:1.3.0' // fetched at runtime as to not need users to add fabricmc maven repo
-
-    compileOnly 'com.mojang:authlib:1.5.21'
+    compileOnly 'net.fabricmc:fabric-fernflower:1.3.0'
+    implementation sourceSets.runtime.runtimeClasspath
 }
 
 test {
     useJUnitPlatform()
+}
+
+jar {
+    from sourceSets.main.output, sourceSets.runtime.output
+    manifest.attributes(
+            'Implementation-Version': project.version
+    )
+}
+
+task runtimeJar(type: Jar, dependsOn: runtimeClasses) {
+    from sourceSets.runtime.output
+    classifier 'runtime'
+    manifest.attributes(
+            'Implementation-Version': project.version
+    )
+}
+
+task sourcesJar(type: Jar) {
+    dependsOn 'classes', 'runtimeClasses'
+    from sourceSets.runtime.allSource, sourceSets.main.allSource
+    classifier 'sources'
+}
+
+artifacts {
+    archives runtimeJar
+    archives sourcesJar
 }
 
 gradlePlugin {
@@ -51,3 +74,12 @@ gradlePlugin {
 
 compileKotlin.kotlinOptions.jvmTarget = '1.8'
 compileTestKotlin.kotlinOptions.jvmTarget = '1.8'
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            artifact sourcesJar
+            artifact runtimeJar
+        }
+    }
+}
