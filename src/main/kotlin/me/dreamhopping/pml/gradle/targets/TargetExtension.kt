@@ -33,6 +33,8 @@ class TargetExtension(val minecraft: PGExtension, val project: Project, val vers
         if (addDefaultMappings) {
             if (project.isYarnAvailable(version)) {
                 yarn()
+            } else {
+                mcp()
             }
         }
     }
