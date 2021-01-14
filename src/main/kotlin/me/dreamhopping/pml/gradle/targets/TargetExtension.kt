@@ -4,6 +4,7 @@ import groovy.lang.Closure
 import me.dreamhopping.pml.gradle.PGExtension
 import me.dreamhopping.pml.gradle.mappings.CustomMappingProvider
 import me.dreamhopping.pml.gradle.mappings.MappingProvider
+import me.dreamhopping.pml.gradle.mappings.McpMappingProvider
 import me.dreamhopping.pml.gradle.mappings.YarnMappingProvider
 import me.dreamhopping.pml.gradle.mappings.YarnMappingProvider.Companion.isYarnAvailable
 import org.gradle.api.Project
@@ -59,6 +60,16 @@ class TargetExtension(val minecraft: PGExtension, val project: Project, val vers
     @JvmOverloads
     fun yarn(version: String? = null) {
         mappingProviders.add(YarnMappingProvider(version) { onIdChange() })
+        onIdChange()
+    }
+
+    fun mcp() {
+        mappingProviders.add(McpMappingProvider { onIdChange() })
+        onIdChange()
+    }
+
+    fun mcp(channel: String, version: String) {
+        mappingProviders.add(McpMappingProvider(channel, version) { onIdChange() })
         onIdChange()
     }
 

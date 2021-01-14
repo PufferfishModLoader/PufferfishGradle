@@ -5,8 +5,8 @@ import me.dreamhopping.pml.gradle.data.yarn.YarnManifestEntry
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
 import me.dreamhopping.pml.gradle.tasks.map.yarn.DownloadYarnMappingsTask
 import me.dreamhopping.pml.gradle.tasks.map.yarn.LoadYarnMappingsTask
-import me.dreamhopping.pml.gradle.util.DOWNLOAD_YARN_MAPPINGS_BASE_NAME
-import me.dreamhopping.pml.gradle.util.FETCH_YARN_VERSIONS_BASE_NAME
+import me.dreamhopping.pml.gradle.util.DOWNLOAD_MAPPINGS_BASE_NAME
+import me.dreamhopping.pml.gradle.util.FETCH_MAPPING_VERSIONS_BASE_NAME
 import me.dreamhopping.pml.gradle.util.Json.fromJson
 import me.dreamhopping.pml.gradle.util.LOAD_MAPPINGS_BASE_NAME
 import me.dreamhopping.pml.gradle.util.getCachedFile
@@ -36,7 +36,7 @@ class YarnMappingProvider(version: String? = null, private val onIdChange: () ->
         project.afterEvaluate {
             allYarnProviders.getOrPut(minecraftVersion()) { arrayListOf() }.add(this)
         }
-        val name = "$FETCH_YARN_VERSIONS_BASE_NAME$id"
+        val name = "$FETCH_MAPPING_VERSIONS_BASE_NAME$id"
         if (version == null && project.tasks.findByPath(name) == null) {
             project.tasks.register(name, DownloadTask::class.java) { task ->
                 task.downloadEvenIfNotNecessary = true
@@ -50,7 +50,7 @@ class YarnMappingProvider(version: String? = null, private val onIdChange: () ->
                 }
             }
         }
-        val downloadName = "$DOWNLOAD_YARN_MAPPINGS_BASE_NAME$id"
+        val downloadName = "$DOWNLOAD_MAPPINGS_BASE_NAME$id"
         val downloadTask = project.tasks.register(downloadName, DownloadYarnMappingsTask::class.java) {
             if (version == null) {
                 it.dependsOn(name)
@@ -64,7 +64,7 @@ class YarnMappingProvider(version: String? = null, private val onIdChange: () ->
         val task = project.tasks.register(loadName, LoadYarnMappingsTask::class.java) {
             it.dependsOn(downloadName)
             it.downloadTask = downloadTask.get()
-            it.outputBase = project.getCachedFile("mappings/yarn").absolutePath
+            it.outputBase = project.getCachedFile("mappings/yarn-${minecraftVersion()}").absolutePath
             it.versionProvider = { version ?: "unknown" }
         }
 
@@ -81,7 +81,7 @@ class YarnMappingProvider(version: String? = null, private val onIdChange: () ->
         fun Project.isYarnAvailable(minecraftVersion: String) = getLatestForVersion(minecraftVersion) != null
 
         private fun Project.getLatestForVersion(minecraftVersion: String): String? {
-            val file = getCachedFile("yarn/versions.json")
+            val file = getCachedFile("yarn/$minecraftVersion.json")
             file.parentFile?.mkdirs()
 
             if (!gradle.startParameter.isOffline) {
