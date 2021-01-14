@@ -39,15 +39,6 @@ test {
     useJUnitPlatform()
 }
 
-jar {
-    from sourceSets.main.output, sourceSets.runtime.output
-    manifest.attributes(
-            'Implementation-Vendor': project.group,
-            'Implementation-Version': project.version,
-            'Implementation-Title': project.name
-    )
-}
-
 task runtimeJar(type: Jar, dependsOn: runtimeClasses) {
     from sourceSets.runtime.output
     classifier 'runtime'
@@ -56,10 +47,25 @@ task runtimeJar(type: Jar, dependsOn: runtimeClasses) {
     )
 }
 
-task sourcesJar(type: Jar) {
+task runtimeSourcesJar(type: Jar) {
     dependsOn 'classes', 'runtimeClasses'
-    from sourceSets.runtime.allSource, sourceSets.main.allSource
-    classifier 'sources'
+    from sourceSets.runtime.allSource
+    classifier 'runtime-sources'
+}
+
+jar {
+    dependsOn 'runtimeJar', 'runtimeSourcesJar'
+    from sourceSets.main.output, sourceSets.runtime.output
+    manifest.attributes(
+            'Implementation-Vendor': project.group,
+            'Implementation-Version': project.version,
+            'Implementation-Title': project.name
+    )
+    from project.tasks.runtimeJar, project.tasks.runtimeSourcesJar
+}
+
+java {
+    withSourcesJar()
 }
 
 artifacts {
@@ -76,14 +82,6 @@ gradlePlugin {
     }
 }
 
-publishing {
-    publications {
-        pluginMaven(MavenPublication) {
-            artifact sourcesJar
-            artifact runtimeJar
-        }
-    }
-}
 compileKotlin {
     kotlinOptions {
         jvmTarget = "1.8"

@@ -256,11 +256,22 @@ object TargetConfig {
         }
 
         project.afterEvaluate { _ ->
-            project.repositories.maven { it.setUrl("https://libraries.minecraft.net") }
-
-            project.buildscript.repositories.forEach {
-                project.repositories.add(it)
+            val selfVersion = javaClass.`package`.implementationVersion
+            val selfBaseName = "${javaClass.`package`.implementationTitle}-$selfVersion"
+            val selfFile = project.getRepoFile("me.dreamhopping.pml", "gradle-runtime", selfVersion)
+            val selfSourcesFile = project.getRepoFile("me.dreamhopping.pml", "gradle-runtime", selfVersion, "sources")
+            if (!selfFile.exists()) {
+                selfFile.parentFile?.mkdirs()
+                selfFile.outputStream()
+                    .use { out -> javaClass.getResourceAsStream("/$selfBaseName-runtime.jar").use { it.copyTo(out) } }
             }
+            if (!selfSourcesFile.exists()) {
+                selfSourcesFile.parentFile?.mkdirs()
+                selfSourcesFile.outputStream()
+                    .use { out -> javaClass.getResourceAsStream("/$selfBaseName-runtime-sources.jar").use { it.copyTo(out) } }
+            }
+
+            project.repositories.maven { it.setUrl("https://libraries.minecraft.net") }
 
             val versionJson = project.getCachedFile("versions/${ext.version}.json")
 
@@ -290,12 +301,7 @@ object TargetConfig {
                 }
             }
 
-            project.dependencies.add(libsConfig.name, mapOf(
-                "group" to javaClass.`package`.implementationVendor,
-                "name" to javaClass.`package`.implementationTitle,
-                "version" to javaClass.`package`.implementationVersion,
-                "classifier" to "runtime"
-            ))
+            project.dependencies.add(libsConfig.name, "me.dreamhopping.pml:gradle-runtime:$selfVersion")
 
             val inputs = ext.mappingProviders.mapIndexed { index, it ->
                 val id = "${ext.version}-$index"
