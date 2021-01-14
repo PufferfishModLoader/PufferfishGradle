@@ -23,14 +23,18 @@ import org.gradle.jvm.tasks.Jar
 import java.net.URL
 
 object TargetConfig {
+    private val projectsDoneConfiguring = hashSetOf<Project>()
+
     fun onIdChange(project: Project, ext: TargetExtension, version: String) {
-        val config = project.configurations.maybeCreate("mc$version")
-        config.dependencies.removeAll { true }
-        project.dependencies.add(
-            config.name,
-            "net.minecraft:merged:${MapJarTask.getVersion(version, ext.mappingProviders, ext.accessTransformers)}"
-        )
-        project.dependencies.add(config.name, "net.minecraft:merged-resources:$version")
+        if (project !in projectsDoneConfiguring) {
+            val config = project.configurations.maybeCreate("mc$version")
+            config.dependencies.removeAll { true }
+            project.dependencies.add(
+                config.name,
+                "net.minecraft:merged:${MapJarTask.getVersion(version, ext.mappingProviders, ext.accessTransformers)}"
+            )
+            project.dependencies.add(config.name, "net.minecraft:merged-resources:$version")
+        }
     }
 
     fun onSourceSetNameChange(ext: TargetExtension, old: String) {
@@ -78,7 +82,6 @@ object TargetConfig {
         val libsConfig = project.configurations.maybeCreate("mcLibs${ext.version}")
         val nativeLibsConfig = project.configurations.maybeCreate("mcNatives${ext.version}")
         val mcConfig = project.configurations.maybeCreate("mc${ext.version}")
-        mcConfig.isCanBeResolved = false
         libsConfig.extendsFrom(nativeLibsConfig)
 
         project.tasks.register("$DOWNLOAD_VERSION_BASE_NAME${ext.version}", DownloadVersionJsonTask::class.java) {
@@ -328,7 +331,6 @@ object TargetConfig {
                     "classifier" to "mc${ext.version}"
                 ))
             }
-            project.configurations.getByName(set.implementationConfigurationName).extendsFrom()
 
             project.dependencies.add(set.implementationConfigurationName, mainSourceSet.runtimeClasspath)
 
@@ -369,6 +371,7 @@ object TargetConfig {
 
             mcConfig.extendsFrom(libsConfig)
             project.configurations.getByName(set.implementationConfigurationName).extendsFrom(mcConfig)
+            projectsDoneConfiguring.add(project)
         }
 
         project.tasks.register("setup${ext.version}") {
