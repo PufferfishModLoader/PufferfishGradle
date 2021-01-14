@@ -318,6 +318,8 @@ object TargetConfig {
                 project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.maybeCreate(ext.sourceSetName)
             val mainSourceSet = ext.minecraft.mainSourceSet
 
+            project.dependencies.add(set.implementationConfigurationName, mainSourceSet.runtimeClasspath)
+
             if (!ext.minecraft.separateVersionJars) {
                 val jarTask: Jar = project[mainSourceSet.jarTaskName]
                 jarTask.from(set.output)
