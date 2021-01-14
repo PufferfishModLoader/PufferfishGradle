@@ -28,7 +28,8 @@ abstract class DecompileAction : WorkAction<DecompileParameters> {
             VERIFY_ANONYMOUS_CLASSES to "1",
             BYTECODE_SOURCE_MAPPING to "1",
             USE_DEBUG_VAR_NAMES to "1",
-            LOG_LEVEL to IFernflowerLogger.Severity.ERROR.name
+            LOG_LEVEL to IFernflowerLogger.Severity.ERROR.name,
+            THREADS to Runtime.getRuntime().availableProcessors()
             // RENAMER_FACTORY to VariableNameProvider.Factory::class.java.name
         )
 
@@ -55,5 +56,7 @@ abstract class DecompileAction : WorkAction<DecompileParameters> {
         } ?: println("Running on Java 9 or higher, decompiler output might not be accurate.")
 
         decompiler.decompileContext()
+
+        System.gc()
     }
 }

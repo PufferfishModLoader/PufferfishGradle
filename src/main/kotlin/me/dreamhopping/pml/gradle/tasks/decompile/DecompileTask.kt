@@ -53,11 +53,17 @@ abstract class DecompileTask : DefaultTask() {
             it.forkOptions.jvmArgs("-Xmx3G")
         }
 
-        queue.submit(DecompileAction::class.java) {
-            it.input.set(getInput())
-            it.libraries.set(libraries)
-            it.output.set(getOutput())
-            it.mappings.set(getMappings())
+        synchronized (decompileLock) {
+            queue.submit(DecompileAction::class.java) {
+                it.input.set(getInput())
+                it.libraries.set(libraries)
+                it.output.set(getOutput())
+                it.mappings.set(getMappings())
+            }
         }
+    }
+
+    companion object {
+        private val decompileLock = Object()
     }
 }
