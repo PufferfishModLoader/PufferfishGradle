@@ -256,6 +256,8 @@ object TargetConfig {
         }
 
         project.afterEvaluate { _ ->
+            project.repositories.maven { it.setUrl("https://libraries.minecraft.net") }
+
             project.buildscript.repositories.forEach {
                 project.repositories.add(it)
             }
