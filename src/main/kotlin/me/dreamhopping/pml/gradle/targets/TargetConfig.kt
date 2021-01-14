@@ -23,11 +23,13 @@ import org.gradle.jvm.tasks.Jar
 import java.net.URL
 
 object TargetConfig {
-    fun onIdChange(project: Project, version: String, newId: String) {
+    fun onIdChange(project: Project, ext: TargetExtension, version: String) {
         val config = project.configurations.maybeCreate("mc$version")
-        config.isCanBeResolved = false
         config.dependencies.removeAll { true }
-        project.dependencies.add(config.name, "net.minecraft:merged:$version-$newId")
+        project.dependencies.add(
+            config.name,
+            "net.minecraft:merged:${MapJarTask.getVersion(version, ext.mappingProviders, ext.accessTransformers)}"
+        )
         project.dependencies.add(config.name, "net.minecraft:merged-resources:$version")
     }
 
@@ -147,6 +149,7 @@ object TargetConfig {
             it.input = it.project.get<MergeJarsTask>("$MERGE_CLASSES_BASE_NAME${ext.version}").outputJar
             it.version = ext.version
             it.genTask = genMapTask
+            it.accessTransformers = ext.accessTransformers
         }
 
         val genSourcesTask = project.tasks.register("$GEN_SOURCES_BASE_NAME${ext.version}", DecompileTask::class.java) {

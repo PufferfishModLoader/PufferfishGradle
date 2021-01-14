@@ -36,6 +36,10 @@ class TargetExtension(val minecraft: PGExtension, val project: Project, val vers
         }
     }
 
+    fun accessTransformer(vararg names: String) {
+        accessTransformers.addAll(names.toSet())
+    }
+
     fun clientMainClass(name: String) {
         clientMainClass = name
     }
@@ -59,7 +63,7 @@ class TargetExtension(val minecraft: PGExtension, val project: Project, val vers
     }
 
     private fun onIdChange() {
-        TargetConfig.onIdChange(project, version, mappingProviders.joinToString("-") { it.id })
+        TargetConfig.onIdChange(project, this, version)
     }
 
     fun mappings(closure: Closure<*>) {

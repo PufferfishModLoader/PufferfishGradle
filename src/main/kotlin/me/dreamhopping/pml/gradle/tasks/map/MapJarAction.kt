@@ -1,6 +1,8 @@
 package me.dreamhopping.pml.gradle.tasks.map
 
+import me.dreamhopping.pml.gradle.data.AccessTransformer
 import me.dreamhopping.pml.gradle.mappings.Mapping
+import me.dreamhopping.pml.gradle.tasks.map.access.AccessMapper
 import me.dreamhopping.pml.gradle.tasks.map.fixes.AccessFixer
 import me.dreamhopping.pml.gradle.tasks.map.fixes.LVTFixer
 import me.dreamhopping.pml.gradle.tasks.map.fixes.SourceFileFixer
@@ -12,6 +14,7 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.ClassRemapper
 import org.objectweb.asm.tree.ClassNode
+import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -20,6 +23,7 @@ abstract class MapJarAction : WorkAction<MapJarParameters> {
     override fun execute() {
         val inputJar = parameters.input.asFile.get()
         val mappingsFile = parameters.mappings.asFile.get()
+        val accessMap = loadAccessMap(parameters.accessTransformers.get())
         val outputJar = parameters.output.asFile.get()
 
         val mappings = mappingsFile.fromJson<Mapping>()
@@ -36,7 +40,7 @@ abstract class MapJarAction : WorkAction<MapJarParameters> {
                         val reader = ClassReader(input.getInputStream(entry).use { it.readBytes() })
                         val saver = MapJarNewClassNameSaver(writer)
                         val fixer = LVTFixer(
-                            ClassRemapper(SourceFileFixer(saver), PGRemapper(mappings, map) { name ->
+                            ClassRemapper(SourceFileFixer(AccessMapper(saver, accessMap)), PGRemapper(mappings, map) { name ->
                                 input.getEntry("$name.class")?.let { entry1 ->
                                     val reader1 = ClassReader(input.getInputStream(entry1).use { it.readBytes() })
                                     val node = ClassNode()
@@ -62,6 +66,15 @@ abstract class MapJarAction : WorkAction<MapJarParameters> {
                         output.closeEntry()
                     }
                 }
+            }
+        }
+    }
+
+    private fun loadAccessMap(files: List<File>) = hashMapOf<String, MutableList<AccessTransformer>>().apply {
+        files.forEach { file ->
+            val map = file.fromJson<Map<String, AccessTransformer>>()
+            map.forEach {
+                getOrPut(it.key) { arrayListOf() }.add(it.value)
             }
         }
     }
