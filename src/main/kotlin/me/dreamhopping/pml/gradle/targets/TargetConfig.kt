@@ -318,6 +318,17 @@ object TargetConfig {
                 project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.maybeCreate(ext.sourceSetName)
             val mainSourceSet = ext.minecraft.mainSourceSet
 
+            val loaderConfig = project.configurations.maybeCreate("loader")
+            loaderConfig.dependencies.forEach {
+                project.dependencies.add(set.implementationConfigurationName, mapOf(
+                    "group" to it.group,
+                    "name" to it.name,
+                    "version" to it.version,
+                    "classifier" to "mc${ext.version}"
+                ))
+            }
+            project.configurations.getByName(set.implementationConfigurationName).extendsFrom()
+
             project.dependencies.add(set.implementationConfigurationName, mainSourceSet.runtimeClasspath)
 
             if (!ext.minecraft.separateVersionJars) {
@@ -366,6 +377,7 @@ object TargetConfig {
 
     fun setup(ext: PGExtension) {
         val project = ext.project
+        val loaderConfig = project.configurations.maybeCreate("loader")
 
         project.repositories.maven {
             it.setUrl(project.repoDir.toURI().toURL())
@@ -403,6 +415,7 @@ object TargetConfig {
             decompileTask.configure { task ->
                 task.dependsOn(*ext.targets.map { "decompile${it.version}" }.toTypedArray())
             }
+            project.configurations.getByName(ext.mainSourceSet.implementationConfigurationName).extendsFrom(loaderConfig)
         }
     }
 }
