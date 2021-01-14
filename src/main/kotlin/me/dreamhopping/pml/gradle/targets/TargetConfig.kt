@@ -256,6 +256,10 @@ object TargetConfig {
         }
 
         project.afterEvaluate { _ ->
+            project.buildscript.repositories.forEach {
+                project.repositories.add(it)
+            }
+
             val versionJson = project.getCachedFile("versions/${ext.version}.json")
 
             if (versionJson.exists()) {
@@ -284,7 +288,12 @@ object TargetConfig {
                 }
             }
 
-            project.dependencies.add(libsConfig.name, "me.dreamhopping.pml:gradle:3.0.0:runtime")
+            project.dependencies.add(libsConfig.name, mapOf(
+                "group" to javaClass.`package`.implementationVendor,
+                "name" to javaClass.`package`.implementationTitle,
+                "version" to javaClass.`package`.implementationVersion,
+                "classifier" to "runtime"
+            ))
 
             val inputs = ext.mappingProviders.mapIndexed { index, it ->
                 val id = "${ext.version}-$index"

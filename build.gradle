@@ -6,8 +6,8 @@ plugins {
 
 sourceCompatibility = targetCompatibility = '1.8'
 
-group 'me.dreamhopping.pml'
-version '3.0.0'
+if (group.isEmpty()) group 'me.dreamhopping.pml'
+if (version == 'unspecified') version '3.0.0'
 
 sourceSets {
     runtime {
@@ -20,6 +20,7 @@ repositories {
     maven {
         url 'https://maven.fabricmc.net'
     }
+    maven { url 'https://dl.bintray.com/kotlin/kotlin-eap' }
 }
 
 dependencies {
@@ -31,6 +32,7 @@ dependencies {
     implementation 'org.ow2.asm:asm-commons:9.0'
     compileOnly 'net.fabricmc:fabric-fernflower:1.3.0'
     implementation sourceSets.runtime.runtimeClasspath
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 }
 
 test {
@@ -40,7 +42,9 @@ test {
 jar {
     from sourceSets.main.output, sourceSets.runtime.output
     manifest.attributes(
-            'Implementation-Version': project.version
+            'Implementation-Vendor': project.group,
+            'Implementation-Version': project.version,
+            'Implementation-Title': project.name
     )
 }
 
@@ -72,14 +76,21 @@ gradlePlugin {
     }
 }
 
-compileKotlin.kotlinOptions.jvmTarget = '1.8'
-compileTestKotlin.kotlinOptions.jvmTarget = '1.8'
-
 publishing {
     publications {
         pluginMaven(MavenPublication) {
             artifact sourcesJar
             artifact runtimeJar
         }
+    }
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }
