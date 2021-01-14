@@ -21,8 +21,10 @@ class SourceFileFixer(visitor: ClassVisitor?) : ClassVisitor(Opcodes.ASM9, visit
 
     override fun visitSource(source: String?, debug: String?) {
         hasSourceFile = true
-        super.visitSource(className.substring(className.lastIndexOf('/') + 1) + ".java", debug)
+        super.visitSource(className.substring(className.lastIndexOf('/') + 1).removeSubclasses() + ".java", debug)
     }
+
+    private fun String.removeSubclasses() = indexOf('$').takeIf { it != -1 }?.let { substring(0, it) } ?: this
 
     override fun visitEnd() {
         if (!hasSourceFile) visitSource(null, null)
