@@ -164,6 +164,7 @@ object TargetConfig {
             it.mapJarTask = mapJarTask
             it.fernflower = project.get<DownloadTask>(DOWNLOAD_FERNFLOWER_NAME).output
             it.libraries = libsConfig
+            it.accessTransformers = ext.accessTransformers
         }
 
         val assetIndexDownloadName = "$DOWNLOAD_ASSET_INDEX_BASE_NAME${ext.version}"

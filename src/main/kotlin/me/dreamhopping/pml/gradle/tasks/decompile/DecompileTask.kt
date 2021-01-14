@@ -25,6 +25,9 @@ abstract class DecompileTask : DefaultTask() {
     @Internal
     lateinit var genTask: TaskProvider<GenMappingsTask>
 
+    @Internal
+    lateinit var accessTransformers: Set<String>
+
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
     fun getInput() = mapJarTask.get().getOutput()
@@ -41,7 +44,12 @@ abstract class DecompileTask : DefaultTask() {
     lateinit var libraries: FileCollection
 
     @OutputFile
-    fun getOutput() = project.getRepoFile("net.minecraft", "merged", "$version-${providers.joinToString("-") { it.id }}", "sources")
+    fun getOutput() = project.getRepoFile(
+        "net.minecraft",
+        "merged",
+        MapJarTask.getVersion(version, providers, accessTransformers),
+        "sources"
+    )
 
     @Inject
     abstract fun getWorkerExecutor(): WorkerExecutor
@@ -53,7 +61,7 @@ abstract class DecompileTask : DefaultTask() {
             it.forkOptions.jvmArgs("-Xmx3G")
         }
 
-        synchronized (decompileLock) {
+        synchronized(decompileLock) {
             queue.submit(DecompileAction::class.java) {
                 it.input.set(getInput())
                 it.libraries.set(libraries)
