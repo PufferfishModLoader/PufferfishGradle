@@ -29,7 +29,7 @@ abstract class DecompileAction : WorkAction<DecompileParameters> {
             BYTECODE_SOURCE_MAPPING to "1",
             USE_DEBUG_VAR_NAMES to "1",
             LOG_LEVEL to IFernflowerLogger.Severity.ERROR.name,
-            THREADS to Runtime.getRuntime().availableProcessors()
+            THREADS to Runtime.getRuntime().availableProcessors().toString()
             // RENAMER_FACTORY to VariableNameProvider.Factory::class.java.name
         )
 
