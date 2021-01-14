@@ -8,6 +8,7 @@ import me.dreamhopping.pml.gradle.tasks.map.MapJarTask
 import me.dreamhopping.pml.gradle.tasks.map.gen.GenMappingsTask
 import me.dreamhopping.pml.gradle.tasks.merge.MergeJarsTask
 import me.dreamhopping.pml.gradle.tasks.run.ExtractNativesTask
+import me.dreamhopping.pml.gradle.tasks.run.GenRunConfigsTask
 import me.dreamhopping.pml.gradle.tasks.run.RunTask
 import me.dreamhopping.pml.gradle.tasks.strip.StripJarTask
 import me.dreamhopping.pml.gradle.util.*
@@ -143,6 +144,41 @@ object TargetConfig {
                     "^${System.mapLibraryName("<WILDCARD>+").replace(".", "\\.").replace("<WILDCARD>", ".")}\$"
             }
 
+        val genRunConfigClientTask = project.tasks.register("genClientRunConfig${ext.version}", GenRunConfigsTask::class.java) {
+            it.dependsOn("$DOWNLOAD_ASSETS_BASE_NAME${ext.version}", "extractNatives${ext.version}")
+            val task: DownloadTask = project["$DOWNLOAD_VERSION_BASE_NAME${ext.version}"]
+            it.dependsOn(task.name)
+            it.vmArgs = if (Os.isFamily(Os.FAMILY_MAC)) listOf(
+                "-XstartOnFirstThread",
+                "-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}"
+            ) else listOf("-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}")
+            it.args = emptyList()
+            it.environment = mapOf(
+                "PG_IS_SERVER" to { "false" },
+                "PG_ASSET_INDEX" to { task.output.fromJson<VersionJson>().assets },
+                "PG_ASSETS_DIR" to { project.getCachedFile("assets").absolutePath },
+                "PG_MAIN_CLASS" to { ext.clientMainClass }
+            )
+            it.mainClass = Start::class.java.name
+            it.configName = "Minecraft ${ext.version} Client"
+            it.select = true
+        }
+
+        val genRunConfigServerTask = project.tasks.register("genServerRunConfig${ext.version}", GenRunConfigsTask::class.java) {
+            it.vmArgs = emptyList()
+            it.args = emptyList()
+            it.environment = mapOf(
+                "PG_IS_SERVER" to { "true" },
+                "PG_MAIN_CLASS" to { ext.serverMainClass }
+            )
+            it.mainClass = Start::class.java.name
+            it.configName = "Minecraft ${ext.version} Server"
+        }
+
+        project.tasks.register("genRunConfigs${ext.version}") {
+            it.dependsOn(genRunConfigClientTask.name, genRunConfigServerTask.name)
+        }
+
         val runClientTask = project.tasks.register("runClient${ext.version}", RunTask::class.java) {
             it.dependsOn("$DOWNLOAD_ASSETS_BASE_NAME${ext.version}", "extractNatives${ext.version}")
             val task: DownloadTask = project["$DOWNLOAD_VERSION_BASE_NAME${ext.version}"]
@@ -168,7 +204,7 @@ object TargetConfig {
             it.args = emptyList()
             it.environment = mapOf(
                 "PG_IS_SERVER" to { "true" },
-                "PG_MAIN_CLASS" to { ext.clientMainClass }
+                "PG_MAIN_CLASS" to { ext.serverMainClass }
             )
             it.mainClass = Start::class.java.name
         }
@@ -217,6 +253,16 @@ object TargetConfig {
 
             val set =
                 project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.maybeCreate(ext.sourceSetName)
+
+            genRunConfigClientTask.configure {
+                it.sourceSetNameGetter = { set.name }
+                it.workDir = ext.runDir.absolutePath
+            }
+
+            genRunConfigServerTask.configure {
+                it.sourceSetNameGetter = { set.name }
+                it.workDir = ext.runDir.absolutePath
+            }
 
             runClientTask.configure {
                 it.dependsOn(set.classesTaskName)
@@ -267,9 +313,15 @@ object TargetConfig {
         val setupTask = project.tasks.register("setup") {
             it.group = "minecraft"
         }
+        val genRunConfigsTask = project.tasks.register("genRunConfigs") {
+            it.group = "minecraft"
+        }
         project.afterEvaluate { _ ->
             setupTask.configure { task ->
                 task.dependsOn(*ext.targets.map { "setup${it.version}" }.toTypedArray())
+            }
+            genRunConfigsTask.configure { task ->
+                task.dependsOn(*ext.targets.map { "genRunConfigs${it.version}" }.toTypedArray())
             }
         }
     }
