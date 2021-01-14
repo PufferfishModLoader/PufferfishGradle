@@ -1,6 +1,7 @@
 package me.dreamhopping.pml.gradle.targets
 
 import groovy.lang.Closure
+import me.dreamhopping.pml.gradle.PGExtension
 import me.dreamhopping.pml.gradle.mappings.CustomMappingProvider
 import me.dreamhopping.pml.gradle.mappings.MappingProvider
 import me.dreamhopping.pml.gradle.mappings.YarnMappingProvider
@@ -10,7 +11,7 @@ import org.gradle.api.plugins.JavaPluginConvention
 import java.io.File
 
 @Suppress("UNUSED")
-class TargetExtension(val project: Project, val version: String, addDefaultMappings: Boolean = true) {
+class TargetExtension(val minecraft: PGExtension, val project: Project, val version: String, addDefaultMappings: Boolean = true) {
     val mappingProviders = arrayListOf<MappingProvider>()
     var mappingVersion = version
     var accessTransformers = hashSetOf<String>()
@@ -19,10 +20,9 @@ class TargetExtension(val project: Project, val version: String, addDefaultMappi
     var runDir = File(project.projectDir, "run/$version")
     var sourceSetName = "mc$version"
         set(v) {
-            val sets = project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets
-            sets.remove(sets.getByName(field))
-            sets.maybeCreate(v)
+            val old = field
             field = v
+            TargetConfig.onSourceSetNameChange(this, old)
         }
 
     init {

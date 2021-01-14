@@ -17,7 +17,9 @@ import me.dreamhopping.pml.runtime.start.Start
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.UnknownDomainObjectException
 import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.jvm.tasks.Jar
 import java.net.URL
 
 object TargetConfig {
@@ -27,6 +29,45 @@ object TargetConfig {
         config.dependencies.removeAll { true }
         project.dependencies.add(config.name, "net.minecraft:merged:$version-$newId")
         project.dependencies.add(config.name, "net.minecraft:merged-resources:$version")
+    }
+
+    fun onSourceSetNameChange(ext: TargetExtension, old: String) {
+        try {
+            val oldSet = ext.project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.getByName(old)
+            ext.project.rm(oldSet.jarTaskName)
+            ext.project.rm(oldSet.javadocJarTaskName)
+            ext.project.rm(oldSet.javadocTaskName)
+            ext.project.rm(oldSet.sourcesJarTaskName)
+            ext.project.rm(oldSet.compileJavaTaskName)
+            ext.project.rm(oldSet.processResourcesTaskName)
+            ext.project.rm(oldSet.classesTaskName)
+            ext.project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.remove(oldSet)
+        } catch (ignored: UnknownDomainObjectException) {
+        }
+        if (ext.minecraft.separateVersionJars) setUpJarTask(ext)
+    }
+
+    private fun Project.rm(name: String) {
+        try {
+            val task = tasks.getByName(name)
+            task.enabled = false
+            task.group = "other"
+        } catch (ignored: UnknownDomainObjectException) {
+        }
+    }
+
+    fun setUpJarTask(ext: TargetExtension) {
+        val project = ext.project
+        val convention = project.convention
+        val plugin = convention.getPlugin(JavaPluginConvention::class.java)
+        val set = plugin.sourceSets.maybeCreate(ext.sourceSetName)
+        val taskName = set.jarTaskName
+        project.tasks.register(taskName, Jar::class.java) {
+            it.from(set.output)
+            it.dependsOn(set.classesTaskName, set.processResourcesTaskName)
+            it.archiveClassifier.set(ext.sourceSetName)
+            it.group = "build"
+        }
     }
 
     fun setupTarget(ext: TargetExtension) {
@@ -144,36 +185,38 @@ object TargetConfig {
                     "^${System.mapLibraryName("<WILDCARD>+").replace(".", "\\.").replace("<WILDCARD>", ".")}\$"
             }
 
-        val genRunConfigClientTask = project.tasks.register("genClientRunConfig${ext.version}", GenRunConfigsTask::class.java) {
-            it.dependsOn("$DOWNLOAD_ASSETS_BASE_NAME${ext.version}", "extractNatives${ext.version}")
-            val task: DownloadTask = project["$DOWNLOAD_VERSION_BASE_NAME${ext.version}"]
-            it.dependsOn(task.name)
-            it.vmArgs = if (Os.isFamily(Os.FAMILY_MAC)) listOf(
-                "-XstartOnFirstThread",
-                "-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}"
-            ) else listOf("-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}")
-            it.args = emptyList()
-            it.environment = mapOf(
-                "PG_IS_SERVER" to { "false" },
-                "PG_ASSET_INDEX" to { task.output.fromJson<VersionJson>().assets },
-                "PG_ASSETS_DIR" to { project.getCachedFile("assets").absolutePath },
-                "PG_MAIN_CLASS" to { ext.clientMainClass }
-            )
-            it.mainClass = Start::class.java.name
-            it.configName = "Minecraft ${ext.version} Client"
-            it.select = true
-        }
+        val genRunConfigClientTask =
+            project.tasks.register("genClientRunConfig${ext.version}", GenRunConfigsTask::class.java) {
+                it.dependsOn("$DOWNLOAD_ASSETS_BASE_NAME${ext.version}", "extractNatives${ext.version}")
+                val task: DownloadTask = project["$DOWNLOAD_VERSION_BASE_NAME${ext.version}"]
+                it.dependsOn(task.name)
+                it.vmArgs = if (Os.isFamily(Os.FAMILY_MAC)) listOf(
+                    "-XstartOnFirstThread",
+                    "-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}"
+                ) else listOf("-Djava.library.path=${project.getCachedFile("natives/${ext.version}")}")
+                it.args = emptyList()
+                it.environment = mapOf(
+                    "PG_IS_SERVER" to { "false" },
+                    "PG_ASSET_INDEX" to { task.output.fromJson<VersionJson>().assets },
+                    "PG_ASSETS_DIR" to { project.getCachedFile("assets").absolutePath },
+                    "PG_MAIN_CLASS" to { ext.clientMainClass }
+                )
+                it.mainClass = Start::class.java.name
+                it.configName = "Minecraft ${ext.version} Client"
+                it.select = true
+            }
 
-        val genRunConfigServerTask = project.tasks.register("genServerRunConfig${ext.version}", GenRunConfigsTask::class.java) {
-            it.vmArgs = emptyList()
-            it.args = emptyList()
-            it.environment = mapOf(
-                "PG_IS_SERVER" to { "true" },
-                "PG_MAIN_CLASS" to { ext.serverMainClass }
-            )
-            it.mainClass = Start::class.java.name
-            it.configName = "Minecraft ${ext.version} Server"
-        }
+        val genRunConfigServerTask =
+            project.tasks.register("genServerRunConfig${ext.version}", GenRunConfigsTask::class.java) {
+                it.vmArgs = emptyList()
+                it.args = emptyList()
+                it.environment = mapOf(
+                    "PG_IS_SERVER" to { "true" },
+                    "PG_MAIN_CLASS" to { ext.serverMainClass }
+                )
+                it.mainClass = Start::class.java.name
+                it.configName = "Minecraft ${ext.version} Server"
+            }
 
         project.tasks.register("genRunConfigs${ext.version}") {
             it.dependsOn(genRunConfigClientTask.name, genRunConfigServerTask.name)
@@ -253,6 +296,15 @@ object TargetConfig {
 
             val set =
                 project.convention.getPlugin(JavaPluginConvention::class.java).sourceSets.maybeCreate(ext.sourceSetName)
+            val mainSourceSet = ext.minecraft.mainSourceSet
+
+            if (!ext.minecraft.separateVersionJars) {
+                val jarTask: Jar = project[mainSourceSet.jarTaskName]
+                jarTask.from(set.output)
+                jarTask.dependsOn(set.processResourcesTaskName, set.compileJavaTaskName)
+            } else {
+                project.tasks.getByName("assemble").dependsOn(set.jarTaskName)
+            }
 
             genRunConfigClientTask.configure {
                 it.sourceSetNameGetter = { set.name }
