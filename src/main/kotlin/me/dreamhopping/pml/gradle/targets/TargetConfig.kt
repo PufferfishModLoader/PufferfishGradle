@@ -371,12 +371,18 @@ object TargetConfig {
         val genRunConfigsTask = project.tasks.register("genRunConfigs") {
             it.group = "minecraft"
         }
+        val decompileTask = project.tasks.register("decompile") {
+            it.group = "minecraft"
+        }
         project.afterEvaluate { _ ->
             setupTask.configure { task ->
                 task.dependsOn(*ext.targets.map { "setup${it.version}" }.toTypedArray())
             }
             genRunConfigsTask.configure { task ->
                 task.dependsOn(*ext.targets.map { "genRunConfigs${it.version}" }.toTypedArray())
+            }
+            decompileTask.configure { task ->
+                task.dependsOn(*ext.targets.map { "decompile${it.version}" }.toTypedArray())
             }
         }
     }
