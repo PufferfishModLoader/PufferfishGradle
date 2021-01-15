@@ -3,7 +3,10 @@ package me.dreamhopping.pml.gradle.target
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import me.dreamhopping.pml.gradle.data.minecraft.VersionJson
+import me.dreamhopping.pml.gradle.target.ArtifactVersionGenerator.buildMappedJarArtifactVersion
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
+import me.dreamhopping.pml.gradle.tasks.map.apply.ApplyMappingsTask
+import me.dreamhopping.pml.gradle.tasks.map.generate.GenerateMappingsTask
 import me.dreamhopping.pml.gradle.tasks.merge.MergeTask
 import me.dreamhopping.pml.gradle.tasks.strip.StripTask
 import me.dreamhopping.pml.gradle.user.TargetData
@@ -42,6 +45,13 @@ object TargetConfigurator {
         minecraftLibrariesConfiguration.extendsFrom(minecraftNativeLibrariesConfiguration)
         minecraftConfiguration.extendsFrom(minecraftLibrariesConfiguration)
 
+        if (version.downloads.server == null) {
+            project.dependencies.add(minecraftConfiguration.name, "net.minecraft:client:${target.version}:resources")
+        } else {
+            project.dependencies.add(minecraftConfiguration.name, "net.minecraft:resources:${target.version}")
+        }
+        refreshMcDep(project, target)
+
         val downloadClientTask = project.tasks.register(target.downloadClientName, DownloadTask::class.java) {
             it.url = version.downloads.client.url
             it.sha1 = version.downloads.client.sha1
@@ -61,9 +71,9 @@ object TargetConfigurator {
         val stripServerTask = downloadServerTask?.let {
             StripTask.register(target.stripServerName, "server", target.version, project, it)
         }
-        stripServerTask?.let {
+        val mergeClassesTask = stripServerTask?.let {
             project.tasks.register(target.mergeClassesName, MergeTask::class.java) {
-                it.dependsOn()
+                it.dependsOn(stripClientTask.name, stripServerTask.name)
                 it.clientJar = stripClientTask.get().classOutput
                 it.serverJar = stripServerTask.get().classOutput
                 it.outputJar = project.repoFile("net.minecraft", "merged", target.version)
@@ -71,22 +81,34 @@ object TargetConfigurator {
         }
         stripServerTask?.let {
             project.tasks.register(target.mergeResourcesName, MergeTask::class.java) {
-                it.dependsOn()
+                it.dependsOn(stripClientTask.name, stripServerTask.name)
                 it.clientJar = stripClientTask.get().resourceOutput
                 it.serverJar = stripServerTask.get().resourceOutput
                 it.outputJar = project.repoFile("net.minecraft", "resources", target.version)
             }
         }
 
+        val generateMappingsTask = project.tasks.register(target.generateMappingsName, GenerateMappingsTask::class.java) {
+            it.mappingProviders = target.mappings
+            it.outputFile = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion(), "mappings", "json")
+        }
+
+        project.tasks.register(target.deobfuscateName, ApplyMappingsTask::class.java) {
+            it.dependsOn(generateMappingsTask.name, mergeClassesTask?.name ?: stripClientTask.name)
+            it.inputJar = mergeClassesTask?.get()?.outputJar ?: stripClientTask.get().classOutput
+            it.mappings = generateMappingsTask.get().outputFile
+            it.accessTransformers = target.accessTransformers
+            it.outputJar = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion())
+        }
 
         project.afterEvaluate {
-
-
             // We could technically do this outside of afterEvaluate, but we change the dependencies of these
             // configurations quite a bit before this point, and doing it here ensures it does not get resolved accidentally.
             readOnlyProjects.add(project) // From this point on, changes to TargetData will not do anything.
-            val implementation = parent.mainSourceSet.implementationConfigurationName
-            project.configurations.getByName(implementation).extendsFrom(minecraftConfiguration)
+            val sourceSet = it.java.sourceSets.maybeCreate(target.sourceSetName)
+
+            project.configurations.getByName(sourceSet.implementationConfigurationName)
+                .extendsFrom(minecraftConfiguration)
         }
     }
 
@@ -97,6 +119,24 @@ object TargetConfigurator {
             it.from(set.output)
             it.archiveClassifier.set(set.name)
             it.group = "build"
+        }
+    }
+
+    fun refreshMcDep(project: Project, target: TargetData) {
+        if (project in readOnlyProjects) return
+        val config = project.configurations.maybeCreate(target.mcConfigName)
+        config.dependencies.removeIf {
+            it.group == "net.minecraft" && it.name == "mapped"
+        }
+        val version = target.buildMappedJarArtifactVersion()
+        project.dependencies.add(config.name, "net.minecraft:mapped:$version")
+        project.tasks.findByName(target.generateMappingsName)?.let {
+            it as GenerateMappingsTask
+            it.outputFile = project.repoFile("net.minecraft", "mapped", version, "mappings", "json")
+        }
+        project.tasks.findByName(target.deobfuscateName)?.let {
+            it as ApplyMappingsTask
+            it.outputJar = project.repoFile("net.minecraft", "mapped", version)
         }
     }
 
@@ -133,4 +173,6 @@ object TargetConfigurator {
     private val TargetData.stripServerName get() = "stripServer$version"
     private val TargetData.mergeClassesName get() = "mergeClasses$version"
     private val TargetData.mergeResourcesName get() = "mergeResources$version"
+    private val TargetData.generateMappingsName get() = "generateMappings$version"
+    private val TargetData.deobfuscateName get() = "deobfuscate$version"
 }

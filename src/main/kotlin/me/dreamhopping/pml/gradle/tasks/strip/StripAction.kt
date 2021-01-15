@@ -17,7 +17,7 @@ abstract class StripAction : WorkAction<StripParameters> {
             ZipOutputStream(classOutput.outputStream()).use { classOutputZip ->
                 ZipOutputStream(resourceOutput.outputStream()).use { resourceOutputZip ->
                     for (entry in inputZip.entries()) {
-                        if (entry.name.startsWith(".class")) {
+                        if (entry.name.endsWith(".class")) {
                             if (!entry.name.contains('/') || allowedDirectories.any { entry.name.startsWith(it) }) {
                                 inputZip.copyEntry(entry, classOutputZip)
                             }
