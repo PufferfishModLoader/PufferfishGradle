@@ -1,5 +1,6 @@
 package me.dreamhopping.pml.gradle
 
+import me.dreamhopping.pml.gradle.target.TargetConfigurator
 import me.dreamhopping.pml.gradle.user.UserData
 import me.dreamhopping.pml.gradle.util.repoDir
 import org.gradle.api.Plugin
@@ -20,7 +21,7 @@ class PufferfishGradle : Plugin<Project> {
             }
         }
 
-        target.extensions.add("minecraft", UserData(target))
+        target.extensions.add("minecraft", UserData(target).also { TargetConfigurator.setUpGlobalTasks(target, it) })
     }
 
     private fun Project.applyPlugin(id: String) {

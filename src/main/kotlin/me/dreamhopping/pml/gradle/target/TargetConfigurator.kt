@@ -79,7 +79,7 @@ object TargetConfigurator {
                 it.outputJar = project.repoFile("net.minecraft", "merged", target.version)
             }
         }
-        stripServerTask?.let {
+        val mergeResourcesTask = stripServerTask?.let {
             project.tasks.register(target.mergeResourcesName, MergeTask::class.java) {
                 it.dependsOn(stripClientTask.name, stripServerTask.name)
                 it.clientJar = stripClientTask.get().resourceOutput
@@ -93,12 +93,17 @@ object TargetConfigurator {
             it.outputFile = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion(), "mappings", "json")
         }
 
-        project.tasks.register(target.deobfuscateName, ApplyMappingsTask::class.java) {
+        val deobfuscateTask = project.tasks.register(target.deobfuscateName, ApplyMappingsTask::class.java) {
             it.dependsOn(generateMappingsTask.name, mergeClassesTask?.name ?: stripClientTask.name)
             it.inputJar = mergeClassesTask?.get()?.outputJar ?: stripClientTask.get().classOutput
             it.mappings = generateMappingsTask.get().outputFile
             it.accessTransformers = target.accessTransformers
             it.outputJar = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion())
+        }
+
+        project.tasks.register(target.setupName) {
+            it.dependsOn(deobfuscateTask.name)
+            mergeResourcesTask?.apply { it.dependsOn(name) }
         }
 
         project.afterEvaluate {
@@ -109,6 +114,17 @@ object TargetConfigurator {
 
             project.configurations.getByName(sourceSet.implementationConfigurationName)
                 .extendsFrom(minecraftConfiguration)
+        }
+    }
+
+    fun setUpGlobalTasks(project: Project, data: UserData) {
+        val setupTask = project.tasks.register("setup") {
+            it.group = "minecraft"
+        }
+        project.afterEvaluate {
+            setupTask.configure { task ->
+                task.dependsOn(*data.targets.map { it.setupName }.toTypedArray())
+            }
         }
     }
 
@@ -175,4 +191,5 @@ object TargetConfigurator {
     private val TargetData.mergeResourcesName get() = "mergeResources$version"
     private val TargetData.generateMappingsName get() = "generateMappings$version"
     private val TargetData.deobfuscateName get() = "deobfuscate$version"
+    private val TargetData.setupName get() = "setup$version"
 }
