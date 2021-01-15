@@ -3,12 +3,10 @@ package me.dreamhopping.pml.gradle.target
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import me.dreamhopping.pml.gradle.data.minecraft.VersionJson
+import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
 import me.dreamhopping.pml.gradle.user.TargetData
 import me.dreamhopping.pml.gradle.user.UserData
-import me.dreamhopping.pml.gradle.util.dataFile
-import me.dreamhopping.pml.gradle.util.download
-import me.dreamhopping.pml.gradle.util.fromJson
-import me.dreamhopping.pml.gradle.util.java
+import me.dreamhopping.pml.gradle.util.*
 import org.gradle.api.Project
 import org.gradle.jvm.tasks.Jar
 import java.io.File
@@ -29,7 +27,36 @@ object TargetConfigurator {
             download(project.getVersionJsonUrl(target.version), versionJson, ignoreInitialState = true)
             versionJson.fromJson<VersionJson>()
         }
-        println(version)
+
+        assert(version.id == target.version)
+
+        val minecraftConfiguration = project.configurations.maybeCreate(target.mcConfigName)
+        val minecraftLibrariesConfiguration = project.configurations.maybeCreate(target.mcLibsConfigName)
+        val minecraftNativeLibrariesConfiguration = project.configurations.maybeCreate(target.mcNativeLibsConfigName)
+
+        minecraftLibrariesConfiguration.extendsFrom(minecraftNativeLibrariesConfiguration)
+        minecraftConfiguration.extendsFrom(minecraftLibrariesConfiguration)
+
+       project.tasks.register(target.downloadClientName, DownloadTask::class.java) {
+            it.url = version.downloads.client.url
+            it.sha1 = version.downloads.client.sha1
+            it.output = project.repoFile("net.minecraft", "client", target.version)
+        }
+
+        version.downloads.server?.let {
+            project.tasks.register(target.downloadServerName, DownloadTask::class.java) { task ->
+                task.url = it.url
+                task.sha1 = it.sha1
+                task.output = project.repoFile("net.minecraft", "server", target.version)
+            }
+        }
+
+        project.afterEvaluate {
+
+
+            val implementation = parent.mainSourceSet.implementationConfigurationName
+            project.configurations.getByName(implementation).extendsFrom(minecraftConfiguration)
+        }
     }
 
     fun setUpJarTasks(project: Project, target: TargetData) {
@@ -65,4 +92,9 @@ object TargetConfigurator {
 
     private val TargetData.versionJsonPath get() = "versions/$version/manifest.json"
     private val TargetData.sourceSetName get() = "mc$version"
+    private val TargetData.mcConfigName get() = "mc$version"
+    private val TargetData.mcLibsConfigName get() = "mcLibs$version"
+    private val TargetData.mcNativeLibsConfigName get() = "mcNativeLibs$version"
+    private val TargetData.downloadClientName get() = "downloadClient$version"
+    private val TargetData.downloadServerName get() = "downloadServer$version"
 }
