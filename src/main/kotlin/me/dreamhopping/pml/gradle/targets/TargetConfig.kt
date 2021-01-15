@@ -368,6 +368,9 @@ object TargetConfig {
                 mapJarTask.name,
                 "$MERGE_RESOURCES_BASE_NAME${ext.version}"
             )
+            if (!versionJson.exists()) {
+                project.get<Task>(set.compileJavaTaskName).dependsOn("addLibraries${ext.version}")
+            }
 
             mcConfig.extendsFrom(libsConfig)
             project.configurations.getByName(set.implementationConfigurationName).extendsFrom(mcConfig)
