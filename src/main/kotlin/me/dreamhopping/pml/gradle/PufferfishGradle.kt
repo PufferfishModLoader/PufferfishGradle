@@ -22,6 +22,11 @@ class PufferfishGradle : Plugin<Project> {
         }
 
         target.extensions.add("minecraft", UserData(target).also { TargetConfigurator.setUpGlobalTasks(target, it) })
+
+        target.afterEvaluate {
+            // Usually, relatively few libraries are downloaded from here. Register it last.
+            target.repositories.maven { it.setUrl("https://libraries.minecraft.net") }
+        }
     }
 
     private fun Project.applyPlugin(id: String) {
