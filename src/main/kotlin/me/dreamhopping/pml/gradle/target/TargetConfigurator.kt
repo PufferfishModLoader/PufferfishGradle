@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import me.dreamhopping.pml.gradle.data.minecraft.VersionJson
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
+import me.dreamhopping.pml.gradle.tasks.merge.MergeTask
 import me.dreamhopping.pml.gradle.tasks.strip.StripTask
 import me.dreamhopping.pml.gradle.user.TargetData
 import me.dreamhopping.pml.gradle.user.UserData
@@ -18,6 +19,8 @@ object TargetConfigurator {
     private val readOnlyProjects = hashSetOf<Project>()
 
     fun configureTarget(project: Project, target: TargetData, parent: UserData, addDefaultMaps: Boolean) {
+        if (parent.separateVersionJars) setUpJarTasks(project, target)
+
         val versionJson = project.dataFile(target.versionJsonPath)
         if (!versionJson.exists()) {
             download(project.getVersionJsonUrl(target.version), versionJson)
@@ -53,23 +56,28 @@ object TargetConfigurator {
             }
         }
 
-        project.tasks.register(target.stripClientName, StripTask::class.java) {
-            it.dependsOn(downloadClientTask.name)
-            it.input = downloadClientTask.get().output
-            it.allowedDirectories = hashSetOf("net/minecraft", "com/mojang/rubydung")
-            it.classOutput = project.repoFile("net.minecraft", "client", target.version, "classes")
-            it.resourceOutput = project.repoFile("net.minecraft", "client", target.version, "resources")
+        val stripClientTask =
+            StripTask.register(target.stripClientName, "client", target.version, project, downloadClientTask)
+        val stripServerTask = downloadServerTask?.let {
+            StripTask.register(target.stripServerName, "server", target.version, project, it)
         }
-
-        downloadServerTask?.let { task ->
-            project.tasks.register(target.stripServerName, StripTask::class.java) {
-                it.dependsOn(task.name)
-                it.input = task.get().output
-                it.allowedDirectories = hashSetOf("net/minecraft", "com/mojang/rubydung")
-                it.classOutput = project.repoFile("net.minecraft", "server", target.version, "classes")
-                it.resourceOutput = project.repoFile("net.minecraft", "server", target.version, "resources")
+        stripServerTask?.let {
+            project.tasks.register(target.mergeClassesName, MergeTask::class.java) {
+                it.dependsOn()
+                it.clientJar = stripClientTask.get().classOutput
+                it.serverJar = stripServerTask.get().classOutput
+                it.outputJar = project.repoFile("net.minecraft", "merged", target.version)
             }
         }
+        stripServerTask?.let {
+            project.tasks.register(target.mergeResourcesName, MergeTask::class.java) {
+                it.dependsOn()
+                it.clientJar = stripClientTask.get().resourceOutput
+                it.serverJar = stripServerTask.get().resourceOutput
+                it.outputJar = project.repoFile("net.minecraft", "resources", target.version)
+            }
+        }
+
 
         project.afterEvaluate {
 
@@ -88,6 +96,7 @@ object TargetConfigurator {
             it.dependsOn(set.compileJavaTaskName, set.processResourcesTaskName)
             it.from(set.output)
             it.archiveClassifier.set(set.name)
+            it.group = "build"
         }
     }
 
@@ -122,4 +131,6 @@ object TargetConfigurator {
     private val TargetData.downloadServerName get() = "downloadServer$version"
     private val TargetData.stripClientName get() = "stripClient$version"
     private val TargetData.stripServerName get() = "stripServer$version"
+    private val TargetData.mergeClassesName get() = "mergeClasses$version"
+    private val TargetData.mergeResourcesName get() = "mergeResources$version"
 }

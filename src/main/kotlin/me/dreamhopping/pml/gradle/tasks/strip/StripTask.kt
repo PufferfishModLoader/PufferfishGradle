@@ -1,6 +1,9 @@
 package me.dreamhopping.pml.gradle.tasks.strip
 
+import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
+import me.dreamhopping.pml.gradle.util.repoFile
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.tasks.*
 import org.gradle.workers.WorkerExecutor
 import java.io.File
@@ -31,6 +34,22 @@ abstract class StripTask : DefaultTask() {
             it.allowedDirectories.set(allowedDirectories)
             it.classOutput.set(classOutput)
             it.resourceOutput.set(resourceOutput)
+        }
+    }
+
+    companion object {
+        fun register(
+            name: String,
+            artifact: String,
+            version: String,
+            project: Project,
+            downloadTask: TaskProvider<DownloadTask>
+        ): TaskProvider<StripTask> = project.tasks.register(name, StripTask::class.java) {
+            it.dependsOn(downloadTask.name)
+            it.input = downloadTask.get().output
+            it.allowedDirectories = hashSetOf("net/minecraft", "com/mojang/rubydung")
+            it.classOutput = project.repoFile("net.minecraft", artifact, version, "classes")
+            it.resourceOutput = project.repoFile("net.minecraft", artifact, version, "resources")
         }
     }
 }
