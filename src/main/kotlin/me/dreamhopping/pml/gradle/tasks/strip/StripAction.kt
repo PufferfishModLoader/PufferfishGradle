@@ -21,7 +21,7 @@ abstract class StripAction : WorkAction<StripParameters> {
                             if (!entry.name.contains('/') || allowedDirectories.any { entry.name.startsWith(it) }) {
                                 inputZip.copyEntry(entry, classOutputZip)
                             }
-                        } else if (!entry.isDirectory) {
+                        } else if (!entry.isDirectory && !entry.name.startsWith("META-INF/")) {
                             inputZip.copyEntry(entry, resourceOutputZip)
                         }
                     }
