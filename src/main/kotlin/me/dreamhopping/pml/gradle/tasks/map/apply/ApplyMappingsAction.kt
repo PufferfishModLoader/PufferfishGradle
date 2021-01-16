@@ -1,5 +1,6 @@
 package me.dreamhopping.pml.gradle.tasks.map.apply
 
+import me.dreamhopping.pml.gradle.tasks.map.apply.processors.AccessTransformer
 import me.dreamhopping.pml.gradle.tasks.map.apply.processors.ClassFixer
 import me.dreamhopping.pml.gradle.tasks.map.apply.processors.InheritanceMap
 import me.dreamhopping.pml.gradle.util.fromJson
@@ -18,6 +19,8 @@ abstract class ApplyMappingsAction : WorkAction<ApplyMappingsParameters> {
         val accessTransformers = parameters.accessTransformers.get()
         val output = parameters.outputJar.asFile.get()
 
+        val accessData = AccessTransformer.parse(accessTransformers)
+
         ZipFile(input).use { inputZip ->
             val inheritanceMap = InheritanceMap(inputZip)
             val mapper = MappingApplier(mappings.fromJson(), inheritanceMap)
@@ -27,7 +30,8 @@ abstract class ApplyMappingsAction : WorkAction<ApplyMappingsParameters> {
                 for (entry in inputZip.entries()) {
                     if (entry.name.endsWith(".class")) {
                         val writer = ClassWriter(0)
-                        val remapper = ClassRemapper(writer, mapper)
+                        val transformer = AccessTransformer(accessData, writer)
+                        val remapper = ClassRemapper(transformer, mapper)
                         val classFixer = ClassFixer(remapper)
 
                         val reader = ClassReader(inputZip.getInputStream(entry).use { it.readBytes() })
