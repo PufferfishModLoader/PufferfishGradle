@@ -12,6 +12,10 @@ class TargetData(val project: Project, val version: String) {
     val mappings = ModificationCallbackList<MappingProvider> { TargetConfigurator.refreshMcDep(project, this) }
     val accessTransformers = hashSetOf<File>()
     var runDir: File = project.file("run/$version")
+    var clientMainClass = "me.dreamhopping.pml.main.PMLClientMain"
+    var serverMainClass = "me.dreamhopping.pml.main.PMLServerMain"
+    var clientArgs = arrayListOf<String>()
+    var serverArgs = arrayListOf<String>()
 
     init {
         mappings.add(DebugMappingProvider)
@@ -23,5 +27,21 @@ class TargetData(val project: Project, val version: String) {
 
     fun runDir(file: Any) {
         runDir = project.file(file)
+    }
+
+    fun clientMainClass(name: String) {
+        clientMainClass = name
+    }
+
+    fun serverMainClass(name: String) {
+        serverMainClass = name
+    }
+
+    fun clientArgs(vararg args: String) {
+        clientArgs.addAll(args)
+    }
+
+    fun serverArgs(vararg args: String) {
+        serverArgs.addAll(args)
     }
 }

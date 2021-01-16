@@ -2,7 +2,11 @@ package me.dreamhopping.pml.runtime.start;
 
 import me.dreamhopping.pml.runtime.start.args.StartArgs;
 import me.dreamhopping.pml.runtime.start.auth.AuthData;
+import me.dreamhopping.pml.runtime.start.auth.io.IOUtil;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -18,7 +22,21 @@ public class Start {
         if (!isServer) {
             addArgument(arguments.getLiteralArguments(), "--version", () -> "PufferfishGradle");
             addArgument(arguments.getLiteralArguments(), "--assetIndex", () -> System.getenv("PG_ASSET_INDEX"));
-            addArgument(arguments.getLiteralArguments(), "--assetsDir", () -> System.getenv("PG_ASSETS_DIR"));
+            File assetDir = new File(System.getenv("PG_ASSETS_DIR"));
+            if (assetDir.exists()) {
+                File assetIndexFile = new File(assetDir, "indexes/" + System.getenv("PG_ASSET_INDEX") + ".json");
+                String data;
+                try (InputStream i = new FileInputStream(assetIndexFile)) {
+                    data = IOUtil.readFully(i);
+                }
+                if (data.contains("\"virtual\": true")) {
+                    assetDir = new File(assetDir, "virtual/legacy");
+                } else if (data.contains("\"map_to_resources\": true")) {
+                    assetDir = new File("resources").getAbsoluteFile();
+                }
+            }
+
+            addArgument(arguments.getLiteralArguments(), "--assetsDir", assetDir::getPath);
 
             boolean shouldAuthenticate = arguments.getAuthUsername() != null && arguments.getAuthPassword() != null;
             String accessToken = "PufferfishGradle";
