@@ -3,6 +3,7 @@ package me.dreamhopping.pml.gradle.target
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import me.dreamhopping.pml.gradle.data.minecraft.VersionJson
+import me.dreamhopping.pml.gradle.mappings.McpMappingProvider.Companion.isMcpAvailable
 import me.dreamhopping.pml.gradle.target.ArtifactVersionGenerator.buildMappedJarArtifactVersion
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
 import me.dreamhopping.pml.gradle.tasks.download.assets.DownloadAssetsTask
@@ -29,6 +30,12 @@ object TargetConfigurator {
 
     fun configureTarget(project: Project, target: TargetData, parent: UserData, addDefaultMaps: Boolean) {
         if (parent.separateVersionJars) setUpJarTasks(project, target)
+
+        if (addDefaultMaps) {
+            if (project.isMcpAvailable(target.version)) {
+                target.mcp()
+            }
+        }
 
         val versionJson = project.dataFile(target.versionJsonPath)
         if (!versionJson.exists()) {
@@ -161,6 +168,7 @@ object TargetConfigurator {
             // We could technically do this outside of afterEvaluate, but we change the dependencies of these
             // configurations quite a bit before this point, and doing it here ensures it does not get resolved accidentally.
             readOnlyProjects.add(project) // From this point on, changes to TargetData will not do anything.
+
             val sourceSet = project.java.sourceSets.maybeCreate(target.sourceSetName)
 
             target.runDir.mkdirs()

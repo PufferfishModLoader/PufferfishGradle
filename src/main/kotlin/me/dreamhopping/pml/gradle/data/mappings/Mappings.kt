@@ -1,22 +1,24 @@
 package me.dreamhopping.pml.gradle.data.mappings
 
+import java.io.Serializable
+
 data class Mappings(
     val classes: LinkedHashMap<String, String>,
-    val methods: LinkedHashMap<String, MethodMaps>,
-    val fields: LinkedHashMap<String, String>
-) {
+    val methods: LinkedHashMap<String, String>,
+    val fields: LinkedHashMap<String, String>,
+    val locals: LinkedHashMap<String, String>
+) : Serializable {
     fun className(obfuscated: String, name: String) {
         classes[obfuscated] = name
     }
 
-    inline fun method(
+    fun method(
         owner: String,
         obfuscated: String,
         desc: String,
-        name: String,
-        callback: MethodMaps.() -> Unit = {}
+        name: String
     ) {
-        methods["$owner/$obfuscated$desc"] = MethodMaps(name, linkedMapOf()).apply(callback)
+        methods["$owner/$obfuscated$desc"] = name
     }
 
     fun field(owner: String, obfuscated: String, name: String) {
@@ -25,6 +27,6 @@ data class Mappings(
 
     companion object {
         inline fun mappings(callback: Mappings.() -> Unit) =
-            Mappings(linkedMapOf(), linkedMapOf(), linkedMapOf()).apply(callback)
+            Mappings(linkedMapOf(), linkedMapOf(), linkedMapOf(), linkedMapOf()).apply(callback)
     }
 }

@@ -2,18 +2,18 @@ package me.dreamhopping.pml.gradle.tasks.map.generate
 
 import me.dreamhopping.pml.gradle.mappings.MappingProvider
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.*
 import org.gradle.workers.WorkerExecutor
 import java.io.File
 import javax.inject.Inject
 
 @CacheableTask
 abstract class GenerateMappingsTask : DefaultTask() {
-    @Input
+    @Internal
     var mappingProviders: List<MappingProvider>? = null
+
+    @Input
+    fun getMappings() = mappingProviders?.map { it.mappings }
 
     @OutputFile
     var outputFile: File? = null
@@ -23,9 +23,9 @@ abstract class GenerateMappingsTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        getWorkerExecutor().noIsolation().submit(GenerateMappingsAction::class.java) {
-            it.output.set(outputFile)
-            it.providers.set(mappingProviders)
+        getWorkerExecutor().noIsolation().submit(GenerateMappingsAction::class.java) { params ->
+            params.output.set(outputFile)
+            params.mappings.set(getMappings())
         }
     }
 }

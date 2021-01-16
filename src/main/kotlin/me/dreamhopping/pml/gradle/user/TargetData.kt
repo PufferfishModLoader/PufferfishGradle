@@ -1,7 +1,7 @@
 package me.dreamhopping.pml.gradle.user
 
-import me.dreamhopping.pml.gradle.mappings.DebugMappingProvider
 import me.dreamhopping.pml.gradle.mappings.MappingProvider
+import me.dreamhopping.pml.gradle.mappings.McpMappingProvider
 import me.dreamhopping.pml.gradle.target.TargetConfigurator
 import me.dreamhopping.pml.gradle.util.ModificationCallbackList
 import org.gradle.api.Project
@@ -16,10 +16,6 @@ class TargetData(val project: Project, val version: String) {
     var serverMainClass = "me.dreamhopping.pml.main.PMLServerMain"
     var clientArgs = arrayListOf<String>()
     var serverArgs = arrayListOf<String>()
-
-    init {
-        mappings.add(DebugMappingProvider)
-    }
 
     fun accessTransformer(file: Any) {
         accessTransformers.add(project.file(file).absoluteFile)
@@ -43,5 +39,10 @@ class TargetData(val project: Project, val version: String) {
 
     fun serverArgs(vararg args: String) {
         serverArgs.addAll(args)
+    }
+
+    @JvmOverloads
+    fun mcp(channel: String? = null, version: String? = null) {
+        mappings.add(McpMappingProvider(channel, version, project, this.version))
     }
 }

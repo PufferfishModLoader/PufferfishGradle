@@ -17,25 +17,24 @@ class MappingApplier(private val mappings: Mappings, private val inheritanceMap:
         owner,
         name,
         descriptor
-    ) { it.mappedName } ?: name
+    ) ?: name
 
     override fun mapFieldName(owner: String, name: String, descriptor: String?) = getName(
         mappings.fields,
         owner,
         name,
         null
-    ) { it } ?: name
+    ) ?: name
 
-    private fun <T> getName(
-        map: Map<String, T>,
+    private fun getName(
+        map: Map<String, String>,
         owner: String,
         name: String,
-        desc: String?,
-        getter: (T) -> String
+        desc: String?
     ): String? {
-        map["$owner/$name${desc ?: ""}"]?.let { return getter(it) }
+        map["$owner/$name${desc ?: ""}"]?.let { return it }
         for (parent in inheritanceMap.getInheritance(owner)) {
-            getName(map, parent, name, desc, getter)?.let { return it }
+            getName(map, parent, name, desc)?.let { return it }
         }
         return null
     }
