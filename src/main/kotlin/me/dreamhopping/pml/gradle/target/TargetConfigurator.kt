@@ -5,6 +5,7 @@ import com.google.gson.JsonParseException
 import me.dreamhopping.pml.gradle.data.minecraft.VersionJson
 import me.dreamhopping.pml.gradle.target.ArtifactVersionGenerator.buildMappedJarArtifactVersion
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
+import me.dreamhopping.pml.gradle.tasks.download.assets.DownloadAssetsTask
 import me.dreamhopping.pml.gradle.tasks.map.apply.ApplyMappingsTask
 import me.dreamhopping.pml.gradle.tasks.map.generate.GenerateMappingsTask
 import me.dreamhopping.pml.gradle.tasks.merge.MergeTask
@@ -53,7 +54,8 @@ object TargetConfigurator {
         refreshMcDep(project, target)
 
         version.libraries.filter { it.allowed() }.forEach { lib ->
-            val config = minecraftLibrariesConfiguration.takeUnless { lib.getNative() != null } ?: minecraftNativeLibrariesConfiguration
+            val config = minecraftLibrariesConfiguration.takeUnless { lib.getNative() != null }
+                ?: minecraftNativeLibrariesConfiguration
             project.dependencies.add(config.name, lib.getId())
         }
 
@@ -93,10 +95,17 @@ object TargetConfigurator {
             }
         }
 
-        val generateMappingsTask = project.tasks.register(target.generateMappingsName, GenerateMappingsTask::class.java) {
-            it.mappingProviders = target.mappings
-            it.outputFile = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion(), "mappings", "json")
-        }
+        val generateMappingsTask =
+            project.tasks.register(target.generateMappingsName, GenerateMappingsTask::class.java) {
+                it.mappingProviders = target.mappings
+                it.outputFile = project.repoFile(
+                    "net.minecraft",
+                    "mapped",
+                    target.buildMappedJarArtifactVersion(),
+                    "mappings",
+                    "json"
+                )
+            }
 
         val deobfuscateTask = project.tasks.register(target.deobfuscateName, ApplyMappingsTask::class.java) {
             it.dependsOn(generateMappingsTask.name, mergeClassesTask?.name ?: stripClientTask.name)
@@ -104,6 +113,22 @@ object TargetConfigurator {
             it.mappings = generateMappingsTask.get().outputFile
             it.accessTransformers = target.accessTransformers
             it.outputJar = project.repoFile("net.minecraft", "mapped", target.buildMappedJarArtifactVersion())
+        }
+
+        val downloadAssetIndexTask =
+            project.tasks.findByName(version.downloadAssetIndexName) as? DownloadTask ?: project.tasks.register(
+                version.downloadAssetIndexName,
+                DownloadTask::class.java
+            ) {
+                it.url = version.assetIndex.url
+                it.sha1 = version.assetIndex.sha1
+                it.output = project.dataFile("assets/indexes/${version.assets}.json")
+            }.get()
+
+        val downloadAssets = project.tasks.register(target.downloadAssetsName, DownloadAssetsTask::class.java) {
+            it.dependsOn(downloadAssetIndexTask.name)
+            it.assetIndex = downloadAssetIndexTask.output
+            it.runDir = target.runDir
         }
 
         project.tasks.register(target.setupName) {
@@ -115,7 +140,9 @@ object TargetConfigurator {
             // We could technically do this outside of afterEvaluate, but we change the dependencies of these
             // configurations quite a bit before this point, and doing it here ensures it does not get resolved accidentally.
             readOnlyProjects.add(project) // From this point on, changes to TargetData will not do anything.
-            val sourceSet = it.java.sourceSets.maybeCreate(target.sourceSetName)
+            val sourceSet = project.java.sourceSets.maybeCreate(target.sourceSetName)
+
+            downloadAssets.configure { it.runDir = target.runDir }
 
             project.configurations.getByName(sourceSet.implementationConfigurationName)
                 .extendsFrom(minecraftConfiguration)
@@ -197,4 +224,6 @@ object TargetConfigurator {
     private val TargetData.generateMappingsName get() = "generateMappings$version"
     private val TargetData.deobfuscateName get() = "deobfuscate$version"
     private val TargetData.setupName get() = "setup$version"
+    private val VersionJson.downloadAssetIndexName get() = "downloadAssetIndex$assets"
+    private val TargetData.downloadAssetsName get() = "downloadAssets$version"
 }

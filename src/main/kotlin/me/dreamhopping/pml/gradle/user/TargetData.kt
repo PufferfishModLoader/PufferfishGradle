@@ -11,6 +11,7 @@ import java.io.File
 class TargetData(val project: Project, val version: String) {
     val mappings = ModificationCallbackList<MappingProvider> { TargetConfigurator.refreshMcDep(project, this) }
     val accessTransformers = hashSetOf<File>()
+    var runDir: File = project.file("run/$version")
 
     init {
         mappings.add(DebugMappingProvider)
@@ -18,5 +19,9 @@ class TargetData(val project: Project, val version: String) {
 
     fun accessTransformer(file: Any) {
         accessTransformers.add(project.file(file).absoluteFile)
+    }
+
+    fun runDir(file: Any) {
+        runDir = project.file(file)
     }
 }
