@@ -75,9 +75,9 @@ object TargetConfigurator {
         refreshMcDep(project, target)
 
         version.libraries.filter { it.allowed() }.forEach { lib ->
-            val config = minecraftLibrariesConfiguration.takeUnless { lib.getNative() != null }
+            val config = minecraftLibrariesConfiguration.takeUnless { lib.natives != null }
                 ?: minecraftNativeLibrariesConfiguration
-            project.dependencies.add(config.name, lib.getId())
+            lib.addToDependencies(project, config.name)
         }
 
         val downloadClientTask = project.tasks.register(target.downloadClientName, DownloadTask::class.java) {
