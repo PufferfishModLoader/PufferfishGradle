@@ -205,7 +205,9 @@ object TargetConfigurator {
                     .use { rtSourcesFile.outputStream().use { out -> it.copyTo(out) } }
             }
 
-            project.tasks.getByName(sourceSet.compileJavaTaskName).dependsOn(target.deobfuscateName)
+            val t = project.tasks.getByName(sourceSet.compileJavaTaskName)
+            t.dependsOn(target.deobfuscateName)
+            mergeResourcesTask?.let { t.dependsOn(it.name) }
 
             project.dependencies.add(
                 sourceSet.implementationConfigurationName,
