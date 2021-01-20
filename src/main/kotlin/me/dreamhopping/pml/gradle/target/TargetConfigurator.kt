@@ -74,7 +74,7 @@ object TargetConfigurator {
         }
         refreshMcDep(project, target)
 
-        version.libraries.filter { it.allowed() }.forEach { lib ->
+        version.libraries.forEach { lib ->
             val config = minecraftLibrariesConfiguration.takeUnless { lib.natives != null }
                 ?: minecraftNativeLibrariesConfiguration
             lib.addToDependencies(project, config.name)
