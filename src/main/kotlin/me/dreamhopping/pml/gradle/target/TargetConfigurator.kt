@@ -12,6 +12,7 @@ import me.dreamhopping.pml.gradle.tasks.loader.CreateClassPathInfoTask
 import me.dreamhopping.pml.gradle.tasks.map.apply.ApplyMappingsTask
 import me.dreamhopping.pml.gradle.tasks.map.generate.GenerateMappingsTask
 import me.dreamhopping.pml.gradle.tasks.merge.MergeTask
+import me.dreamhopping.pml.gradle.tasks.run.GenRunConfigTask
 import me.dreamhopping.pml.gradle.tasks.run.IRunTask
 import me.dreamhopping.pml.gradle.tasks.run.RunTask
 import me.dreamhopping.pml.gradle.tasks.strip.StripTask
@@ -168,6 +169,24 @@ object TargetConfigurator {
             target.setUpRunTask(version, it, false)
         }
 
+        val genRunConfigClientTask = project.tasks.register(target.genClientRunConfigName, GenRunConfigTask::class.java) {
+            target.setUpRunTask(version, it, true)
+            it.sourceSetName = target.sourceSetName
+            it.select = true
+            it.configName = "Minecraft ${target.version} Client"
+        }
+
+        val genRunConfigServerTask = project.tasks.register(target.genServerRunConfigName, GenRunConfigTask::class.java) {
+            target.setUpRunTask(version, it, false)
+            it.sourceSetName = target.sourceSetName
+            it.select = false
+            it.configName = "Minecraft ${target.version} Server"
+        }
+
+        project.tasks.register(target.genRunConfigsName) {
+            it.dependsOn(genRunConfigClientTask.name, genRunConfigServerTask.name)
+        }
+
         project.tasks.register(target.setupName) {
             it.dependsOn(deobfuscateTask.name)
             mergeResourcesTask?.apply { it.dependsOn(name) }
@@ -182,8 +201,9 @@ object TargetConfigurator {
 
             target.runDir.mkdirs()
             downloadAssets.configure { it.runDir = target.runDir }
-            arrayOf(runClientTask, runServerTask).forEach { p ->
+            arrayOf(runClientTask, runServerTask, genRunConfigClientTask, genRunConfigServerTask).forEach { p ->
                 p.configure {
+                    it as IRunTask
                     it.runDir = target.runDir.absolutePath
                 }
             }
@@ -272,10 +292,16 @@ object TargetConfigurator {
         val setupTask = project.tasks.register("setup") {
             it.group = "minecraft"
         }
+        val genRunConfigsTask = project.tasks.register("genRunConfigs") {
+            it.group = "minecraft"
+        }
         project.afterEvaluate {
             project.configurations.getByName(data.mainSourceSet.implementationConfigurationName).extendsFrom(loaderConfig)
             setupTask.configure { task ->
                 task.dependsOn(*data.targets.map { it.setupName }.toTypedArray())
+            }
+            genRunConfigsTask.configure { task ->
+                task.dependsOn(*data.targets.map { it.genRunConfigsName }.toTypedArray())
             }
 
             val sourceJar = project.tasks.findByName(data.mainSourceSet.sourcesJarTaskName) as? Jar ?: project.tasks.register(data.mainSourceSet.sourcesJarTaskName, Jar::class.java) {
@@ -384,4 +410,7 @@ object TargetConfigurator {
     private val TargetData.runClientName get() = "runClient$version"
     private val TargetData.runServerName get() = "runServer$version"
     private val TargetData.createClassPathInfoName get() = "createClassPathInfo$version"
+    private val TargetData.genClientRunConfigName get() = "genRunConfigClient$version"
+    private val TargetData.genServerRunConfigName get() = "genRunConfigServer$version"
+    private val TargetData.genRunConfigsName get() = "genRunConfigs$version"
 }
