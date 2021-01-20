@@ -2,6 +2,7 @@ package me.dreamhopping.pml.gradle.user
 
 import me.dreamhopping.pml.gradle.mappings.MappingProvider
 import me.dreamhopping.pml.gradle.mappings.McpMappingProvider
+import me.dreamhopping.pml.gradle.mappings.YarnMappingProvider
 import me.dreamhopping.pml.gradle.target.TargetConfigurator
 import me.dreamhopping.pml.gradle.util.ModificationCallbackList
 import org.gradle.api.Project
@@ -44,5 +45,10 @@ class TargetData(val project: Project, val version: String) {
     @JvmOverloads
     fun mcp(channel: String? = null, version: String? = null) {
         mappings.add(McpMappingProvider(channel, version, project, this.version))
+    }
+
+    @JvmOverloads
+    fun yarn(version: String? = null) {
+        mappings.add(YarnMappingProvider(version, project, this.version))
     }
 }

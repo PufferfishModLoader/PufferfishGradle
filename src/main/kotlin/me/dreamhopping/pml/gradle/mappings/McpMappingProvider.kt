@@ -88,7 +88,7 @@ class McpMappingProvider(
         val (fields, methodInfo) = csv.loadCsvData()
         val (methods, _) = methodInfo
 
-        val path = buildMavenPath(MCP_GROUP, "mcp_config", mcVersion, "zip")
+        val path = buildMavenPath(MCP_GROUP, "mcp_config", mcVersion, extension = "zip")
         val mcpConfigZip = File(project.repoDir, path)
         download("https://files.minecraftforge.net/maven/$path", mcpConfigZip)
 
