@@ -200,6 +200,8 @@ object TargetConfigurator {
                     .use { rtSourcesFile.outputStream().use { out -> it.copyTo(out) } }
             }
 
+            project.tasks.getByName(sourceSet.compileJavaTaskName).dependsOn(target.deobfuscateName)
+
             project.dependencies.add(
                 sourceSet.implementationConfigurationName,
                 "me.dreamhopping.pml:gradle-runtime:$rtVersion"
