@@ -208,7 +208,19 @@ object TargetConfigurator {
             )
             project.dependencies.add(sourceSet.implementationConfigurationName, parent.mainSourceSet.runtimeClasspath)
 
-            project.configurations.getByName(sourceSet.implementationConfigurationName)
+            val loaderConfig = project.configurations.maybeCreate("loader")
+            val implementationConfig = project.configurations.getByName(sourceSet.implementationConfigurationName)
+
+            loaderConfig.dependencies.forEach {
+                project.dependencies.add(implementationConfig.name, mapOf(
+                    "group" to it.group,
+                    "name" to it.name,
+                    "version" to it.version,
+                    "classifier" to sourceSet.name
+                ))
+            }
+
+            implementationConfig
                 .extendsFrom(minecraftConfiguration)
         }
     }
@@ -239,10 +251,12 @@ object TargetConfigurator {
     }
 
     fun setUpGlobalTasks(project: Project, data: UserData) {
+        val loaderConfig = project.configurations.maybeCreate("loader")
         val setupTask = project.tasks.register("setup") {
             it.group = "minecraft"
         }
         project.afterEvaluate {
+            project.configurations.getByName(data.mainSourceSet.implementationConfigurationName).extendsFrom(loaderConfig)
             setupTask.configure { task ->
                 task.dependsOn(*data.targets.map { it.setupName }.toTypedArray())
             }
