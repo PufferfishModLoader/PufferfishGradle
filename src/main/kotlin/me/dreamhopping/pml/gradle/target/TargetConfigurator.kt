@@ -8,6 +8,7 @@ import me.dreamhopping.pml.gradle.mappings.YarnMappingProvider.Companion.isYarnA
 import me.dreamhopping.pml.gradle.target.ArtifactVersionGenerator.buildMappedJarArtifactVersion
 import me.dreamhopping.pml.gradle.tasks.download.DownloadTask
 import me.dreamhopping.pml.gradle.tasks.download.assets.DownloadAssetsTask
+import me.dreamhopping.pml.gradle.tasks.loader.CreateClassPathInfoTask
 import me.dreamhopping.pml.gradle.tasks.map.apply.ApplyMappingsTask
 import me.dreamhopping.pml.gradle.tasks.map.generate.GenerateMappingsTask
 import me.dreamhopping.pml.gradle.tasks.merge.MergeTask
@@ -21,8 +22,11 @@ import me.dreamhopping.pml.runtime.start.Start
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.Copy
 import org.gradle.jvm.tasks.Jar
+import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
 
 object TargetConfigurator {
@@ -32,6 +36,7 @@ object TargetConfigurator {
 
     fun configureTarget(project: Project, target: TargetData, parent: UserData, addDefaultMaps: Boolean) {
         if (parent.separateVersionJars) setUpJarTasks(project, target)
+        if (parent.loader) setUpLoaderTasks(project, target)
 
         if (addDefaultMaps) {
             if (project.isYarnAvailable(target.version)) {
@@ -222,6 +227,16 @@ object TargetConfigurator {
 
             implementationConfig
                 .extendsFrom(minecraftConfiguration)
+
+            if (parent.separateVersionJars) {
+                project.extensions.findByType(PublishingExtension::class.java)?.let { publishData ->
+                    for (publication in publishData.publications) {
+                        if (publication is MavenPublication) {
+                            publication.artifact(project.tasks.getByName(sourceSet.jarTaskName))
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -260,6 +275,24 @@ object TargetConfigurator {
             setupTask.configure { task ->
                 task.dependsOn(*data.targets.map { it.setupName }.toTypedArray())
             }
+
+            val sourceJar = project.tasks.findByName(data.mainSourceSet.sourcesJarTaskName) as? Jar ?: project.tasks.register(data.mainSourceSet.sourcesJarTaskName, Jar::class.java) {
+                it.archiveClassifier.set("sources")
+                it.group = "build"
+                it.from(data.mainSourceSet.allSource)
+            }.get()
+
+            for (target in data.targets) {
+                sourceJar.from(project.java.sourceSets.maybeCreate(target.sourceSetName).allSource)
+            }
+
+            project.extensions.findByType(PublishingExtension::class.java)?.let { publishData ->
+                for (publication in publishData.publications) {
+                    if (publication is MavenPublication) {
+                        publication.artifact(sourceJar)
+                    }
+                }
+            }
         }
     }
 
@@ -270,6 +303,22 @@ object TargetConfigurator {
             it.from(set.output)
             it.archiveClassifier.set(set.name)
             it.group = "build"
+        }
+        project.tasks.getByName("assemble").dependsOn(set.jarTaskName)
+    }
+
+    fun setUpLoaderTasks(project: Project, target: TargetData) {
+        val t = project.tasks.register(target.createClassPathInfoName, CreateClassPathInfoTask::class.java) {
+            it.classpath = project.configurations.getByName(target.mcLibsConfigName)
+            it.output = File(it.temporaryDir, "pml-classpath.txt")
+        }
+
+        project.afterEvaluate {
+            val set = project.java.sourceSets.maybeCreate(target.sourceSetName)
+
+            val task = project.tasks.getByName(set.processResourcesTaskName) as ProcessResources
+            task.dependsOn(t.name)
+            task.from(t.get().output)
         }
     }
 
@@ -332,4 +381,5 @@ object TargetConfigurator {
     private val TargetData.extractNativesName get() = "extractNatives$version"
     private val TargetData.runClientName get() = "runClient$version"
     private val TargetData.runServerName get() = "runServer$version"
+    private val TargetData.createClassPathInfoName get() = "createClassPathInfo$version"
 }

@@ -9,12 +9,20 @@ import org.gradle.api.tasks.SourceSet
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class UserData(val project: Project) {
     var mainSourceSet: SourceSet = project.java.sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
-    var separateVersionJars = true
+    var separateVersionJars = false
         set(v) {
             if (!v) error("Turning off separation of version JARs is not supported")
             field = v
             targets.forEach {
                 TargetConfigurator.setUpJarTasks(project, it)
+            }
+        }
+    var loader = false
+        set(v) {
+            if (!v) error("Turning off loader is not supported")
+            field = v
+            targets.forEach {
+                TargetConfigurator.setUpLoaderTasks(project, it)
             }
         }
     val targets = hashSetOf<TargetData>()
@@ -33,5 +41,9 @@ class UserData(val project: Project) {
 
     fun target(vararg versions: String) {
         versions.forEach { target(it) }
+    }
+
+    fun loader() {
+        loader = true
     }
 }
