@@ -25,7 +25,14 @@ class PufferfishGradle : Plugin<Project> {
 
         target.afterEvaluate {
             // Usually, relatively few libraries are downloaded from here. Register it last.
-            target.repositories.maven { it.setUrl("https://libraries.minecraft.net") }
+            target.repositories.maven {
+                it.setUrl("https://libraries.minecraft.net")
+                if (GradleVersion.current() >= GradleVersion.version("6.0")) {
+                    it.metadataSources { sources ->
+                        sources.artifact()
+                    }
+                }
+            }
         }
     }
 
