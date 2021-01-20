@@ -31,11 +31,11 @@ abstract class ApplyMappingsAction : WorkAction<ApplyMappingsParameters> {
                     if (entry.name.endsWith(".class")) {
                         val writer = ClassWriter(0)
                         val transformer = AccessTransformer(accessData, writer)
-                        val remapper = ClassRemapper(transformer, mapper)
-                        val classFixer = ClassFixer(remapper)
+                        val classFixer = ClassFixer(transformer)
+                        val remapper = ClassRemapper(classFixer, mapper)
 
                         val reader = ClassReader(inputZip.getInputStream(entry).use { it.readBytes() })
-                        reader.accept(inheritanceMap.createSaver(classFixer), 0)
+                        reader.accept(inheritanceMap.createSaver(remapper), 0)
 
                         outputZip.putNextEntry(ZipEntry("${mapper.map(entry.name.removeSuffix(".class"))}.class"))
                         outputZip.write(writer.toByteArray())
