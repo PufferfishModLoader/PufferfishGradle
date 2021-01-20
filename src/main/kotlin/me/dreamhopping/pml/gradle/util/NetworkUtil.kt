@@ -12,7 +12,6 @@ fun download(url: String, output: File, sha1: String? = null, maxTries: Int = 5,
     var ex: Exception? = null
     repeat(maxTries) {
         try {
-            println("Attempting download of $url to $output")
             output.parentFile?.mkdirs()
             output.outputStream().use { output ->
                 urlObj.openConnection().apply {
