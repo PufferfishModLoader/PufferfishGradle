@@ -13,7 +13,7 @@ data class Library(val name: String, val natives: Map<String, String>?, val rule
     fun addToDependencies(project: Project, configName: String) {
         if (natives != null) {
             for (os in arrayOf("windows", "osx", "linux")) {
-                getNative(os)?.let { project.dependencies.add(configName, "$name:$os") }
+                getNative(os)?.let { project.dependencies.add(configName, "$name:$it") }
             }
         } else {
             project.dependencies.add(configName, name)
