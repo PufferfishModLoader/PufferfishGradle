@@ -19,6 +19,7 @@ import me.dreamhopping.pml.gradle.util.*
 import me.dreamhopping.pml.runtime.start.Start
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 import org.gradle.jvm.tasks.Jar
 import java.io.File
@@ -207,7 +208,9 @@ object TargetConfigurator {
         }
     }
 
-    private fun TargetData.setUpRunTask(versionJson: VersionJson, task: IRunTask, client: Boolean) {
+    private fun <T> TargetData.setUpRunTask(versionJson: VersionJson, task: T, client: Boolean)
+            where T : IRunTask,
+                  T : Task {
         val set = task.project.java.sourceSets.maybeCreate(sourceSetName)
         if (client) task.dependsOn(extractNativesName, downloadAssetsName)
         task.dependsOn(set.classesTaskName)
