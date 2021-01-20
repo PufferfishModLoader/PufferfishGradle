@@ -47,7 +47,7 @@ abstract class StripTask : DefaultTask() {
         ): TaskProvider<StripTask> = project.tasks.register(name, StripTask::class.java) {
             it.dependsOn(downloadTask.name)
             it.input = downloadTask.get().output
-            it.allowedDirectories = hashSetOf("net/minecraft", "com/mojang/rubydung")
+            it.allowedDirectories = hashSetOf("net/minecraft", "com/mojang/rubydung", "com/mojang/blaze3d")
             it.classOutput = project.repoFile("net.minecraft", artifact, version, "classes")
             it.resourceOutput = project.repoFile("net.minecraft", artifact, version, "resources")
         }
