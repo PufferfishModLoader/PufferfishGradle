@@ -2,6 +2,7 @@ package me.dreamhopping.pml.gradle.tasks.run
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileCollection
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.plugins.ide.idea.model.IdeaModel
@@ -19,7 +20,7 @@ import javax.xml.xpath.XPathConstants
 import javax.xml.xpath.XPathFactory
 
 abstract class GenRunConfigTask : DefaultTask(), IRunTask {
-    @Input
+    @Classpath
     override var classpath: FileCollection? = null
     @Input
     override var mainClass: String? = null
