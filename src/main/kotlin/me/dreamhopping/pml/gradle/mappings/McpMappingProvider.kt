@@ -59,14 +59,11 @@ class McpMappingProvider(
 
     private fun loadSrg(project: Project, mcVersion: String, csv: File) {
         val (fields, methodInfo) = csv.loadCsvData()
-        val (methods, params) = methodInfo
+        val (methods, _) = methodInfo
 
         val path = buildMavenPath(MCP_GROUP, "mcp", mcVersion, "srg", "zip")
         val srgZip = File(project.repoDir, path)
         download("https://files.minecraftforge.net/maven/$path", srgZip)
-        val regex = "func_(\\d+)_.*".toRegex()
-        val paramRegex = "p_(\\d+)_(\\d+)_".toRegex()
-        val methodIdMap = hashMapOf<String, String>()
 
         ZipFile(srgZip).use { zip ->
             zip.getInputStream(zip.getEntry("joined.srg")).bufferedReader().use { reader ->
@@ -76,29 +73,44 @@ class McpMappingProvider(
                         "CL:" -> mappings.classes[parts[1]] = parts[2]
                         "FD:" -> mappings.fields[parts[1]] = parts[2].extractName(fields)
                         "MD:" -> {
-                            val owner = parts[1].substringBeforeLast('/')
+                            // val owner = parts[1].substringBeforeLast('/')
                             val srgName = parts[3].extractName(emptyMap())
                             val deobfName = methods[srgName] ?: srgName
-                            regex.matchEntire(srgName)?.let {
-                                methodIdMap[it.groupValues[1]] = "${owner.replace('/', '_').replace('$', '.')}_$deobfName"
-                            }
                             mappings.methods["${parts[1]}${parts[2]}"] = deobfName
                         }
                     }
                 }
             }
         }
-
-        params.forEach { (srg, mcp) ->
-            paramRegex.matchEntire(srg)?.let {
-                mappings.locals["p_${methodIdMap[it.groupValues[1]]}_${it.groupValues[2]}"] = mcp
-            }
-        }
     }
 
     private fun loadMcpConfig(project: Project, mcVersion: String, csv: File) {
         val (fields, methodInfo) = csv.loadCsvData()
-        val (methods, params) = methodInfo
+        val (methods, _) = methodInfo
+
+        val path = buildMavenPath(MCP_GROUP, "mcp_config", mcVersion, "zip")
+        val mcpConfigZip = File(project.repoDir, path)
+        download("https://files.minecraftforge.net/maven/$path", mcpConfigZip)
+
+        ZipFile(mcpConfigZip).use { zip ->
+            zip.getInputStream(zip.getEntry("config/joined.tsrg")).bufferedReader().use { reader ->
+                var currentClass = ""
+                for (line in reader.lines()) {
+                    if (line.startsWith('\t') || line.startsWith(' ')) {
+                        val parts = line.trim().split(" ")
+                        if (parts.size == 3) {
+                            mappings.methods["$currentClass/${parts[0]}${parts[1]}"] = methods[parts[2]] ?: parts[2]
+                        } else {
+                            mappings.fields["$currentClass/${parts[0]}"] = fields[parts[1]] ?: parts[1]
+                        }
+                    } else {
+                        val parts = line.split(" ")
+                        currentClass = parts[0]
+                        mappings.classes[parts[0]] = parts[1]
+                    }
+                }
+            }
+        }
     }
 
     private fun String.extractName(csv: Map<String, String>) = substringAfterLast('/').let { csv[it] ?: it }
