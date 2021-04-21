@@ -79,7 +79,7 @@ object TargetConfigurator {
             val config = minecraftLibrariesConfiguration.takeUnless { lib.natives != null }
                 ?: minecraftNativeLibrariesConfiguration
 
-            if (lib.name.contains("java-objc-bridge")) return // macOS bruh moment
+            if (lib.name.contains("java-objc-bridge")) return@forEach // macOS bruh moment
             lib.addToDependencies(project, config.name)
         }
 
