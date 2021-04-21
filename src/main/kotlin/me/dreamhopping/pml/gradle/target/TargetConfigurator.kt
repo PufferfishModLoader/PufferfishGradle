@@ -78,6 +78,8 @@ object TargetConfigurator {
         version.libraries.forEach { lib ->
             val config = minecraftLibrariesConfiguration.takeUnless { lib.natives != null }
                 ?: minecraftNativeLibrariesConfiguration
+
+            if (lib.name.contains("java-objc-bridge")) return // macOS bruh moment
             lib.addToDependencies(project, config.name)
         }
 
@@ -169,19 +171,21 @@ object TargetConfigurator {
             target.setUpRunTask(version, it, false)
         }
 
-        val genRunConfigClientTask = project.tasks.register(target.genClientRunConfigName, GenRunConfigTask::class.java) {
-            target.setUpRunTask(version, it, true)
-            it.sourceSetName = target.sourceSetName
-            it.select = true
-            it.configName = "Minecraft ${target.version} Client"
-        }
+        val genRunConfigClientTask =
+            project.tasks.register(target.genClientRunConfigName, GenRunConfigTask::class.java) {
+                target.setUpRunTask(version, it, true)
+                it.sourceSetName = target.sourceSetName
+                it.select = true
+                it.configName = "Minecraft ${target.version} Client"
+            }
 
-        val genRunConfigServerTask = project.tasks.register(target.genServerRunConfigName, GenRunConfigTask::class.java) {
-            target.setUpRunTask(version, it, false)
-            it.sourceSetName = target.sourceSetName
-            it.select = false
-            it.configName = "Minecraft ${target.version} Server"
-        }
+        val genRunConfigServerTask =
+            project.tasks.register(target.genServerRunConfigName, GenRunConfigTask::class.java) {
+                target.setUpRunTask(version, it, false)
+                it.sourceSetName = target.sourceSetName
+                it.select = false
+                it.configName = "Minecraft ${target.version} Server"
+            }
 
         project.tasks.register(target.genRunConfigsName) {
             it.dependsOn(genRunConfigClientTask.name, genRunConfigServerTask.name)
@@ -239,12 +243,14 @@ object TargetConfigurator {
             val implementationConfig = project.configurations.getByName(sourceSet.implementationConfigurationName)
 
             loaderConfig.dependencies.forEach {
-                project.dependencies.add(implementationConfig.name, mapOf(
-                    "group" to it.group,
-                    "name" to it.name,
-                    "version" to it.version,
-                    "classifier" to sourceSet.name
-                ))
+                project.dependencies.add(
+                    implementationConfig.name, mapOf(
+                        "group" to it.group,
+                        "name" to it.name,
+                        "version" to it.version,
+                        "classifier" to sourceSet.name
+                    )
+                )
             }
 
             implementationConfig
@@ -296,7 +302,8 @@ object TargetConfigurator {
             it.group = "minecraft"
         }
         project.afterEvaluate {
-            project.configurations.getByName(data.mainSourceSet.implementationConfigurationName).extendsFrom(loaderConfig)
+            project.configurations.getByName(data.mainSourceSet.implementationConfigurationName)
+                .extendsFrom(loaderConfig)
             setupTask.configure { task ->
                 task.dependsOn(*data.targets.map { it.setupName }.toTypedArray())
             }
@@ -304,11 +311,12 @@ object TargetConfigurator {
                 task.dependsOn(*data.targets.map { it.genRunConfigsName }.toTypedArray())
             }
 
-            val sourceJar = project.tasks.findByName(data.mainSourceSet.sourcesJarTaskName) as? Jar ?: project.tasks.register(data.mainSourceSet.sourcesJarTaskName, Jar::class.java) {
-                it.archiveClassifier.set("sources")
-                it.group = "build"
-                it.from(data.mainSourceSet.allSource)
-            }.get()
+            val sourceJar = project.tasks.findByName(data.mainSourceSet.sourcesJarTaskName) as? Jar
+                ?: project.tasks.register(data.mainSourceSet.sourcesJarTaskName, Jar::class.java) {
+                    it.archiveClassifier.set("sources")
+                    it.group = "build"
+                    it.from(data.mainSourceSet.allSource)
+                }.get()
 
             for (target in data.targets) {
                 sourceJar.from(project.java.sourceSets.maybeCreate(target.sourceSetName).allSource)
