@@ -10,11 +10,14 @@ import java.io.File
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 class TargetData(val project: Project, val version: String) {
+    var runDir: File = project.file("run/$version")
+    val model: UserData = project.extensions.getByType(UserData::class.java)
+
+    var clientMainClass = model.clientRunClass
+    var serverMainClass = model.serverRunClass
+
     val mappings = ModificationCallbackList<MappingProvider> { TargetConfigurator.refreshMcDep(project, this) }
     val accessTransformers = hashSetOf<File>()
-    var runDir: File = project.file("run/$version")
-    var clientMainClass = "me.dreamhopping.pml.main.PMLClientMain"
-    var serverMainClass = "me.dreamhopping.pml.main.PMLServerMain"
     var clientArgs = arrayListOf<String>()
     var serverArgs = arrayListOf<String>()
 

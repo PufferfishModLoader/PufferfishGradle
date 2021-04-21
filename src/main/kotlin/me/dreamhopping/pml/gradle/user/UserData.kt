@@ -8,6 +8,8 @@ import org.gradle.api.tasks.SourceSet
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class UserData(val project: Project) {
+    var clientRunClass: String = "me.dreamhopping.pml.main.PMLClientMain"
+    var serverRunClass: String = "me.dreamhopping.pml.main.PMLServerMain"
     var mainSourceSet: SourceSet = project.java.sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
     var separateVersionJars = false
         set(v) {
